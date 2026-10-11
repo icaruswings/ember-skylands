@@ -1,0 +1,36 @@
+from playwright.sync_api import sync_playwright
+import json
+from pathlib import Path
+with sync_playwright() as p:
+ browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader'])
+ page=browser.new_page(viewport={'width':1440,'height':960},device_scale_factor=1)
+ errors=[]
+ page.on('pageerror',lambda e:errors.append(str(e)))
+ page.on('console',lambda e:errors.append(e.text) if e.type=='error' else None)
+ page.goto('http://127.0.0.1:4173',wait_until='networkidle')
+ page.wait_for_function('window.ember !== undefined')
+ page.screenshot(path='/workspace/sites/ember-skylands/docs/desktop-intro.png')
+ print('INIT',json.dumps(page.evaluate('ember.snapshot()')))
+ page.locator('#settings-button').click();page.locator('#quality-select').select_option('low');page.locator('#settings-done').click()
+ page.locator('#start-button').click()
+ page.wait_for_timeout(500)
+ start=page.evaluate('ember.snapshot().player')
+ page.keyboard.down('KeyW');page.wait_for_function('ember.snapshot().player.z < 8.5');page.keyboard.up('KeyW')
+ end=page.evaluate('ember.snapshot().player')
+ assert end['z']<start['z']-1, (start,end)
+ page.keyboard.down('Space');page.wait_for_function('ember.snapshot().player.y > 0.5');page.keyboard.up('Space');page.wait_for_timeout(130);page.keyboard.down('Space');page.wait_for_function('ember.snapshot().player.gliding');page.keyboard.up('Space')
+ assert page.evaluate('ember.snapshot().player.gliding')
+ page.keyboard.press('Escape')
+ assert page.locator('#dialog-layer').is_visible()
+ frozen=page.evaluate('ember.snapshot().player')
+ page.wait_for_timeout(200)
+ assert frozen==page.evaluate('ember.snapshot().player')
+ page.locator('#resume-button').click()
+ page.locator('#guide-tab').click();assert page.locator('#dialog-title').inner_text()=='A little field guide.';page.locator('#guide-done').click()
+ page.locator('#settings-button').click();page.locator('#quality-select').select_option('low');assert page.evaluate('ember.snapshot().quality')=='low';page.locator('#settings-done').click()
+ page.keyboard.press('KeyM');assert page.locator('#big-map').is_visible();page.locator('#map-done').click()
+ page.screenshot(path='/workspace/sites/ember-skylands/docs/desktop-game.png')
+ print('DESKTOP',json.dumps(page.evaluate('ember.snapshot()')))
+ print('ERRORS',errors)
+ assert not errors
+ browser.close()

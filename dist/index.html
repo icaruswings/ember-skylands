@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f2e8" />
+    <meta
+      name="description"
+      content="Meet Ember. Explore a sunlit kingdom of floating islands in an original 3D dragon adventure. Play instantly with touch, keyboard or gamepad."
+    />
+    <title>Ember — A Skylands Adventure</title>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <svg class="symbols" aria-hidden="true">
+      <symbol id="i-flame" viewBox="0 0 24 24">
+        <path
+          d="M13 2c1 6-4 5-4 10-2-1-2-3-2-3-5 7-2 13 5 13s10-8 6-12c0 4-2 4-2 4 1-5-1-9-3-12Z"
+        />
+      </symbol>
+      <symbol id="i-gem" viewBox="0 0 24 24">
+        <path d="m3 8 4-5h10l4 5-9 13L3 8Zm0 0h18M7 3l5 18 5-18" />
+      </symbol>
+      <symbol id="i-wing" viewBox="0 0 24 24">
+        <path d="m3 18 3-8 15-7-5 12-6-1-7 4Zm3-8 4 4 11-11M3 18l7-4" />
+      </symbol>
+      <symbol id="i-volume" viewBox="0 0 24 24">
+        <path d="M3 9h4l5-4v14l-5-4H3V9Zm13-2a7 7 0 0 1 0 10m3-13a11 11 0 0 1 0 16" />
+      </symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24">
+        <path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6" />
+      </symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" /></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" /></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24">
+        <path d="m3 5 6-2 6 3 6-2v15l-6 2-6-3-6 2V5Zm6-2v15m6-12v15" />
+      </symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24">
+        <path d="M12 20S2 14 2 8c0-5 7-6 10-1 3-5 10-4 10 1 0 6-10 12-10 12Z" />
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24">
+        <path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" />
+      </symbol>
+    </svg>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Ember home"
+        ><span class="brand-mark"
+          ><svg><use href="#i-flame" /></svg></span
+        ><span>ember<span class="brand-sub">A SKYLANDS ADVENTURE</span></span></a
+      >
+      <nav aria-label="Main navigation">
+        <button class="nav-button active" id="adventure-tab">Adventure</button
+        ><button class="nav-button" id="guide-tab">Field guide <span>→</span></button>
+      </nav>
+      <div class="header-tools">
+        <span class="play-label"><span></span> READY TO EXPLORE</span
+        ><button
+          class="icon-button"
+          id="sound-button"
+          aria-label="Turn sound off"
+          aria-pressed="true"
+        >
+          <svg><use href="#i-volume" /></svg></button
+        ><button class="icon-button" id="settings-button" aria-label="Open settings">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6" /></svg>
+        </button>
+      </div>
+    </header>
+    <main>
+      <section class="intro-scene" id="stage" aria-label="3D game">
+        <canvas id="game" aria-label="Ember 3D game world"></canvas>
+        <div class="vignette"></div>
+        <div class="scene-top">
+          <div class="location">
+            <span class="eyebrow">THE SKYLANDS</span><span id="zone-name">Sunstone Meadow</span
+            ><span class="zone-tag">REALM 01</span>
+          </div>
+          <div class="hud" id="hud">
+            <div class="hud-item gem-count">
+              <svg><use href="#i-gem" /></svg><span id="gem-count">0</span><small>/ 60</small>
+            </div>
+            <span class="hud-divider"></span>
+            <div class="hud-item rescue-count">
+              <svg><use href="#i-wing" /></svg><span id="rescue-count">0</span><small>/ 3</small>
+            </div>
+            <span class="hud-divider health-divider"></span>
+            <div id="health" aria-label="3 health" class="health">
+              <svg><use href="#i-heart" /></svg><svg><use href="#i-heart" /></svg
+              ><svg><use href="#i-heart" /></svg>
+            </div>
+          </div>
+        </div>
+        <div id="intro" class="intro">
+          <div class="intro-content">
+            <div class="intro-tag">
+              <svg><use href="#i-spark" /></svg> A LITTLE WONDER AWAITS
+            </div>
+            <h1>Small dragon.<br /><em>Big adventure.</em></h1>
+            <p>
+              Spread your wings. Follow your curiosity.<br />A forgotten sky kingdom is waiting for
+              you.
+            </p>
+            <button id="start-button" class="primary-button">
+              Let’s explore <svg><use href="#i-arrow" /></svg>
+            </button>
+            <div id="continue-note" class="intro-note">
+              Made for your browser. Built for adventure.
+            </div>
+          </div>
+          <div class="intro-bottom">
+            <span
+              ><svg><use href="#i-wing" /></svg> RUN · GLIDE · BREATHE FIRE</span
+            ><span class="intro-tip">Three islands. A world worth wandering.</span>
+          </div>
+        </div>
+        <div id="playing-ui" class="hidden">
+          <div class="quest-card">
+            <span class="quest-label">YOUR ADVENTURE</span
+            ><strong id="quest-title">Bring the Skylands back to life</strong
+            ><span id="quest-copy">Free 3 sky spirits & collect 30 gems.</span>
+            <div class="quest-track"><i id="quest-progress"></i></div>
+          </div>
+          <div class="bottom-left">
+            <button id="map-button" class="mini-map-button" aria-label="Open realm map">
+              <canvas id="minimap" width="180" height="140"></canvas
+              ><span
+                ><svg><use href="#i-map" /></svg> Realm map <kbd>M</kbd></span
+              >
+            </button>
+            <div class="saved-indicator" id="save-status">● Progress saves automatically</div>
+          </div>
+          <div class="desktop-controls">
+            <span><kbd>W A S D</kbd> Move</span><span><kbd>SPACE</kbd> Jump / glide</span
+            ><span><kbd>SHIFT</kbd> Charge</span><span><kbd>F</kbd> Flame</span
+            ><span class="camera-hint">Drag to look</span>
+          </div>
+          <div class="stage-tools">
+            <button class="glass-button" id="pause-button" aria-label="Pause game">
+              <svg><use href="#i-pause" /></svg></button
+            ><button class="glass-button" id="fullscreen-button" aria-label="Enter fullscreen">
+              <svg><use href="#i-expand" /></svg>
+            </button>
+          </div>
+          <button id="interaction-prompt" class="interaction-prompt hidden">
+            Press <kbd>E</kbd> to free Sol
+          </button>
+          <div id="touch-controls">
+            <div id="joystick" aria-label="Move joystick"><span id="thumb"></span></div>
+            <div class="touch-actions">
+              <button data-action="charge" class="touch-action charge" aria-label="Charge">
+                ➜<span>Charge</span></button
+              ><button data-action="flame" class="touch-action flame" aria-label="Breathe fire">
+                <svg><use href="#i-flame" /></svg><span>Flame</span></button
+              ><button data-action="jump" class="touch-action jump" aria-label="Jump or glide">
+                <svg><use href="#i-wing" /></svg><span>Jump</span></button
+              ><button
+                data-action="interact"
+                class="touch-action interact hidden"
+                aria-label="Interact"
+              >
+                ✧<span>Rescue</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="toast" role="status" class="toast hidden"></div>
+        <div id="loading" class="loading">
+          <span class="loading-mark">✧</span> Waking the Skylands…
+        </div>
+        <div id="dialog-layer" class="dialog-layer hidden">
+          <section
+            id="dialog"
+            class="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dialog-title"
+          >
+            <button id="dialog-close" class="dialog-close" aria-label="Close dialog">×</button>
+            <div id="dialog-content"></div>
+          </section>
+        </div>
+      </section>
+      <footer class="site-footer">
+        <span
+          >An original little adventure <span class="footer-star">✧</span> A world worth
+          wandering</span
+        ><span>TOUCH, KEYBOARD & GAMEPAD <i></i> PLAY IN YOUR BROWSER</span>
+      </footer>
+    </main>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
