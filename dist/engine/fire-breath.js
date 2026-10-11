@@ -139,7 +139,7 @@ export class FireBreath {
     this.pool.update(dt, player, breathing, quality);
     const sin = Math.sin(player.angle),
       cos = Math.cos(player.angle);
-    this.root.position.set(player.x + sin * 1.75, player.y + 1.21, player.z + cos * 1.75);
+    this.root.position.set(player.x + sin * 1.61, player.y + 1.21, player.z + cos * 1.61);
     this.root.rotation.y = player.angle;
     this.root.visible = breathing;
     const elapsed = 0.42 - player.flame;

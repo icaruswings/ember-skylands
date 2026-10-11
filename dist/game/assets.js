@@ -1,6 +1,17 @@
 import * as T from '../assets/three.module.js';
 export { palette, mat, mesh, orb, block } from './primitives.js';
-export { createDragon, animateDragon, createSentinel } from './characters.js';
+import {
+  createDragon as proceduralDragon,
+  createSentinel as proceduralSentinel,
+} from './characters.js';
+import { cloneModel } from '../engine/models.js';
+export { animateDragon } from './characters.js';
+export function createDragon(scale = 1, color) {
+  return cloneModel('dragon', scale, color) || proceduralDragon(scale, color);
+}
+export function createSentinel(type) {
+  return cloneModel('gnorc-' + type) || proceduralSentinel(type);
+}
 export function texture(kind) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1024;
@@ -12,7 +23,7 @@ export function texture(kind) {
     return seed / 4294967296;
   };
   if (kind === 'grass') {
-    c.fillStyle = '#9eb45f';
+    c.fillStyle = '#719f43';
     c.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 2400; i++) {
       const v = 100 + random() * 70;
@@ -28,6 +39,16 @@ export function texture(kind) {
         7,
       );
       c.fill();
+    }
+    for (let i = 0; i < 6000; i++) {
+      const x = random() * 256,
+        y = random() * 256;
+      c.strokeStyle = random() > 0.5 ? 'rgba(41,81,22,.24)' : 'rgba(170,195,91,.3)';
+      c.lineWidth = 0.3;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.quadraticCurveTo(x + random() * 2, y - 1, x + (random() - 0.5) * 5, y - 2 - random() * 3);
+      c.stroke();
     }
   }
   if (kind === 'stone') {

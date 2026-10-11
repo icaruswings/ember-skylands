@@ -9,6 +9,7 @@ export class Input {
     this.orbit = 0;
     this.drag = null;
     this.lookEnabled = false;
+    this.movementBasis = null;
     const prevent = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
     window.addEventListener('keydown', (e) => {
       if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
@@ -19,7 +20,10 @@ export class Input {
         if (action) this.pulses.set(action, (this.pulses.get(action) || 0) + 1);
       }
     });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('keyup', (e) => {
+      this.keys.delete(e.code);
+      if(this.movementNeutral())this.movementBasis=null;
+    });
     window.addEventListener('blur', () => this.clear());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.clear();
@@ -66,6 +70,7 @@ export class Input {
       if (e.pointerId === joyId) {
         joyId = null;
         this.touch = { x: 0, z: 0 };
+        if(this.movementNeutral())this.movementBasis=null;
         thumb.style.transform = 'translate(0,0)';
       }
     };
@@ -98,6 +103,7 @@ export class Input {
     }
   }
   clear() {
+    this.movementBasis = null;
     this.keys.clear();
     this.buttons.clear();
     this.pulses.clear();
@@ -106,6 +112,10 @@ export class Input {
     this.drag = null;
     document.querySelector('#thumb').style.transform = 'translate(0,0)';
     document.querySelectorAll('.pressed').forEach((e) => e.classList.remove('pressed'));
+  }
+  movementNeutral() {
+    return Math.hypot(this.touch.x,this.touch.z)<.08 &&
+      !['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].some(k=>this.keys.has(k));
   }
   sample(cameraAngle) {
     let x =
@@ -131,8 +141,13 @@ export class Input {
       pressed[action + 'Pressed'] = count > 0;
       if (count > 0) this.pulses.set(action, count - 1);
     }
-    const cos = Math.cos(cameraAngle),
-      sin = Math.sin(cameraAngle);
+    // Latch the view basis for a continuous movement gesture. Automatic camera
+    // following must not rotate that same held direction into an endless circle.
+    if (Math.hypot(x, z) <= 0.08) this.movementBasis = null;
+    else if (this.movementBasis === null) this.movementBasis = cameraAngle;
+    const basis = this.movementBasis ?? cameraAngle,
+      cos = Math.cos(basis),
+      sin = Math.sin(basis);
     return {
       ...pressed,
       x: x * cos + z * sin,

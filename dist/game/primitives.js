@@ -1,8 +1,8 @@
 import * as T from '../assets/three.module.js';
 export const palette = {
-  dragon: 0x53baa3,
-  belly: 0xf6d490,
-  wing: 0xf29b59,
+  dragon: 0x9855d7,
+  belly: 0xffd45a,
+  wing: 0xf39a2f,
   stone: 0xdfd0af,
   roof: 0xc97848,
   leaf: 0x68994c,

@@ -13,7 +13,7 @@ export function terrainHeight(level, x, z) {
   return height;
 }
 export function validSave(raw, level) {
-  const empty = { gems: [], rescues: [], enemies: [], complete: false };
+  const empty = { gems: [], rescues: [], enemies: [], chests: [], complete: false };
   if (!raw || raw.version !== 1) return empty;
   const clean = (v, all) =>
     Array.isArray(v)
@@ -21,11 +21,13 @@ export function validSave(raw, level) {
       : [];
   const gems = clean(raw.gems, level.gems),
     rescues = clean(raw.rescues, level.rescues),
-    enemies = clean(raw.enemies, level.enemies);
+    enemies = clean(raw.enemies, level.enemies),
+    chests = clean(raw.chests, level.chests || []);
   return {
     gems,
     rescues,
     enemies,
+    chests,
     complete:
       raw.complete === true &&
       gems.length >= level.goal.gems &&
@@ -71,6 +73,14 @@ export class Simulation {
     this.collected = new Set(v.gems);
     this.rescued = new Set(v.rescues);
     this.defeated = new Set(v.enemies);
+    this.broken = new Set(v.chests);
+    this.gems = level.gems.map((g) => ({
+      ...g,
+      active:
+        !g.source ||
+        (g.source === 'chest' ? this.broken.has(g.sourceId) : this.defeated.has(g.sourceId)),
+    }));
+    this.rescueTimes = new Map();
     this.complete = v.complete;
     this.events = [];
     this.time = 0;
@@ -105,6 +115,7 @@ export class Simulation {
       gems: [...this.collected],
       rescues: [...this.rescued],
       enemies: [...this.defeated],
+      chests: [...this.broken],
       complete: this.complete,
     };
   }
@@ -172,6 +183,17 @@ export class Simulation {
         }
       }
     }
+    for (const c of this.level.chests || []) {
+      if (this.broken.has(c.id) || Math.abs(p.y - c.y) > 1.2) continue;
+      const dx = nx - c.x,
+        dz = nz - c.z,
+        d = Math.hypot(dx, dz),
+        radius = 1.1;
+      if (d < radius) {
+        nx = c.x + (d ? dx / d : Math.sin(p.angle + Math.PI)) * radius;
+        nz = c.z + (d ? dz / d : Math.cos(p.angle + Math.PI)) * radius;
+      }
+    }
     const floor = terrainHeight(this.level, nx, nz);
     const old = terrainHeight(this.level, p.x, p.z);
     if (p.grounded && floor !== null && old !== null && floor - old < 0.65) {
@@ -194,38 +216,106 @@ export class Simulation {
       this.damage(true);
       return;
     }
-    for (const g of this.level.gems)
+    for (const c of this.level.chests || []) {
+      if (this.broken.has(c.id)) continue;
       if (
-        !this.collected.has(g.id) &&
-        Math.hypot(p.x - g.x, p.z - g.z) < 1.35 &&
-        Math.abs(p.y + 0.7 - g.y) < 2
+        (p.charging && this.inAttackRange(c, 1.9, 2, false)) ||
+        (p.flame > 0 && this.inAttackRange(c, 4.5, 2.5))
       ) {
+        this.broken.add(c.id);
+        this.releaseTreasure('chest', c.id, c);
+        this.emit('chest', { ...c });
+      }
+    }
+    for (const g of this.gems) {
+      if (!g.active || this.collected.has(g.id)) continue;
+      const distance = Math.hypot(p.x - g.x, p.z - g.z);
+      if (distance < 3.4 && Math.abs(p.y + 0.7 - g.y) < 2) {
+        const pull = 1 - Math.exp(-dt * 8);
+        g.x += (p.x - g.x) * pull;
+        g.z += (p.z - g.z) * pull;
+        g.y += (p.y + 0.85 - g.y) * pull;
+      }
+      if (Math.hypot(p.x - g.x, p.z - g.z) < 0.65 && Math.abs(p.y + 0.7 - g.y) < 1.5) {
         this.collected.add(g.id);
         this.emit('gem', { id: g.id, x: g.x, y: g.y, z: g.z });
       }
+    }
     for (const e of this.enemies) {
       if (this.defeated.has(e.id)) continue;
       e.phase += dt;
       const distance = Math.hypot(p.x - e.x, p.z - e.z);
-      if (distance < 7 && Math.abs(p.y - e.y) < 2) {
-        const chase = e.type === 'giant' ? 1.2 : 1.8;
+      const previousX = e.x,
+        previousZ = e.z;
+      e.fleeing = e.behavior === 'flee' && distance < 9 && Math.abs(p.y - e.y) < 2;
+      if (distance < (e.fleeing ? 9 : 7) && Math.abs(p.y - e.y) < 2) {
+        const chase = e.fleeing ? -4.2 : e.type === 'giant' ? 1.2 : 1.8;
         if (distance > 1.2) {
           e.x += ((p.x - e.x) / distance) * dt * chase;
           e.z += ((p.z - e.z) / distance) * dt * chase;
         }
       } else {
-        e.x = e.homeX + Math.sin(e.phase) * 1.1;
-        e.z = e.homeZ + Math.cos(e.phase) * 0.8;
+        const dx = e.homeX + Math.sin(e.phase) * 1.1 - e.x,
+          dz = e.homeZ + Math.cos(e.phase) * 0.8 - e.z,
+          distance = Math.hypot(dx, dz),
+          fraction = distance ? Math.min(1, (dt * 1.8) / distance) : 0;
+        e.x += dx * fraction;
+        e.z += dz * fraction;
       }
-      const d = Math.hypot(p.x - e.x, p.z - e.z),
-        ahead = (e.x - p.x) * Math.sin(p.angle) + (e.z - p.z) * Math.cos(p.angle);
+      // Never let a thief or patrol walk off an island or through solid scenery.
+      const safe = (x, z) => {
+        const h = terrainHeight(this.level, x, z);
+        return (
+          h !== null &&
+          Math.abs(h - e.y) < 0.7 &&
+          !this.level.obstacles.some((o) =>
+            o.r
+              ? Math.hypot(x - o.x, z - o.z) < o.r + 0.6
+              : Math.abs(x - o.x) < o.halfX + 0.6 && Math.abs(z - o.z) < o.halfZ + 0.6,
+          )
+        );
+      };
+      if (!safe(e.x, e.z)) {
+        const turn = e.phase % 4 < 2 ? 1 : -1;
+        const dx = e.x - previousX,
+          dz = e.z - previousZ;
+        e.x = previousX - dz * turn;
+        e.z = previousZ + dx * turn;
+        if (!safe(e.x, e.z)) {
+          e.x = previousX;
+          e.z = previousZ;
+        }
+      }
+      e.angle = Math.atan2(e.x - previousX, e.z - previousZ);
+      const d = Math.hypot(p.x - e.x, p.z - e.z);
       if (p.charging && d < 1.8 && Math.abs(p.y - e.y) < 2) this.hitEnemy(e.id, 'charge');
-      if (p.flame > 0 && d < 4.5 && ahead > -0.3 && Math.abs(p.y - e.y) < 2.5)
-        this.hitEnemy(e.id, 'flame');
+      if (p.flame > 0 && this.inAttackRange(e, 4.5, 2.5)) this.hitEnemy(e.id, 'flame');
       if (!this.defeated.has(e.id) && d < 1.1 && Math.abs(p.y - e.y) < 1.6) this.damage();
     }
+    this.rescueNearby();
     if (input.interactPressed || (input.interact && !this.interactHeld)) this.interact();
     this.interactHeld = !!input.interact;
+  }
+  inAttackRange(target, range, height, directional = true) {
+    const p = this.player,
+      dx = target.x - p.x,
+      dz = target.z - p.z,
+      d = Math.hypot(dx, dz);
+    return (
+      d < range &&
+      Math.abs(p.y - target.y) < height &&
+      (!directional || d < 0.5 || (dx * Math.sin(p.angle) + dz * Math.cos(p.angle)) / d > 0.55)
+    );
+  }
+  releaseTreasure(source, sourceId, position) {
+    for (const [i, g] of this.gems.entries())
+      if (g.source === source && g.sourceId === sourceId) {
+        g.active = true;
+        g.x = position.x + (i % 2 ? 0.25 : -0.25);
+        g.z = position.z;
+        g.y = position.y + 0.8;
+        if (source === 'enemy') g.x = position.x;
+      }
   }
   hitEnemy(id, attack) {
     const e = this.enemies.find((e) => e.id === id);
@@ -237,6 +327,7 @@ export class Simulation {
     )
       return false;
     this.defeated.add(id);
+    this.releaseTreasure('enemy', id, e);
     this.emit('enemy', { id, x: e.x, y: e.y + 1, z: e.z });
     return true;
   }
@@ -252,7 +343,7 @@ export class Simulation {
       this.emit('respawn');
     }
   }
-  interact() {
+  rescueNearby() {
     const p = this.player;
     for (const r of this.level.rescues)
       if (
@@ -261,12 +352,19 @@ export class Simulation {
         Math.abs(p.y - r.y) < 2
       ) {
         this.rescued.add(r.id);
+        this.rescueTimes.set(r.id, this.time);
         this.checkpoint = { x: r.x, z: r.z + 2, y: r.y };
         p.health = 3;
         const event = { type: 'rescue', ...r };
         this.events.push(event);
         return event;
       }
+    return null;
+  }
+  interact() {
+    const rescue = this.rescueNearby();
+    if (rescue) return rescue;
+    const p = this.player;
     const g = this.level.portal;
     if (Math.hypot(p.x - g.x, p.z - g.z) < 4 && Math.abs(p.y - g.y) < 2) {
       const event = { type: this.unlocked ? 'complete' : 'locked' };
@@ -278,16 +376,9 @@ export class Simulation {
   }
   nearestInteraction() {
     const p = this.player;
-    return (
-      this.level.rescues.find(
-        (r) =>
-          !this.rescued.has(r.id) &&
-          Math.hypot(p.x - r.x, p.z - r.z) < 3 &&
-          Math.abs(p.y - r.y) < 2,
-      ) ||
-      (Math.hypot(p.x - this.level.portal.x, p.z - this.level.portal.z) < 4
-        ? { name: this.unlocked ? 'Journey home' : 'Sunstone portal', portal: true }
-        : null)
-    );
+    return Math.hypot(p.x - this.level.portal.x, p.z - this.level.portal.z) < 4 &&
+      Math.abs(p.y - this.level.portal.y) < 2
+      ? { name: this.unlocked ? 'Journey home' : 'Sunstone portal', portal: true }
+      : null;
   }
 }

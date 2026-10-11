@@ -3,6 +3,8 @@ import { mat, mesh, orb, block, texture, createDragon, createSentinel } from './
 import { LEVEL } from './level.js';
 import { batchStatic } from '../engine/batching.js';
 import { createTree } from './trees.js';
+import { createGrass } from './grass.js';
+import { createChest, gemGeometry } from './treasure.js';
 /** Scene construction is separate from gameplay. All assets are original procedural art. */
 export function createWorld(scene) {
   const root = new T.Group();
@@ -24,7 +26,8 @@ export function createWorld(scene) {
     waters = [],
     gemMeshes = new Map(),
     rescueMeshes = new Map(),
-    enemyMeshes = new Map();
+    enemyMeshes = new Map(),
+    chestMeshes = new Map();
   let seed = 71;
   const rand = () => {
     seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -206,29 +209,17 @@ export function createWorld(scene) {
       const a = i * 0.79;
       tree(island.x + Math.sin(a) * 10, island.y, island.z + Math.cos(a) * 10, 0.7 + rand() * 0.35);
     }
-  // Decorative grass and flowers are instanced for low draw-call cost on phones.
-  const bladeGeo = new T.ConeGeometry(0.14, 0.5, 3),
-    grassMesh = new T.InstancedMesh(bladeGeo, mat(0x729247), 500);
-  const flowerMesh = new T.InstancedMesh(new T.IcosahedronGeometry(0.13, 0), mat(0xffd28d), 140);
-  root.add(grassMesh, flowerMesh);
+  const grassSystem = createGrass(root, LEVEL);
+  // Small flowers use one instanced draw call and stay out of the main paths.
+  const flowerMesh = new T.InstancedMesh(new T.IcosahedronGeometry(0.1, 0), mat(0xf5dfb0), 110);
+  root.add(flowerMesh);
   const dummy = new T.Object3D();
-  for (let i = 0; i < 500; i++) {
-    const land = LEVEL.islands[i % 3],
-      a = rand() * 6.28,
-      r = (0.5 + rand() * 0.43) * land.r;
-    dummy.position.set(land.x + Math.sin(a) * r, land.y + 0.2, land.z + Math.cos(a) * r);
-    dummy.scale.set(1, 0.7 + rand(), 1);
-    dummy.rotation.y = rand() * 6.28;
+  for (let i = 0; i < 110; i++) {
+    const p = grassSystem.field.points[i * 37];
+    dummy.position.set(p.x, p.y + 0.35, p.z);
     dummy.updateMatrix();
-    grassMesh.setMatrixAt(i, dummy.matrix);
-    if (i < 140) {
-      dummy.position.y += 0.2;
-      dummy.scale.setScalar(1);
-      dummy.updateMatrix();
-      flowerMesh.setMatrixAt(i, dummy.matrix);
-    }
+    flowerMesh.setMatrixAt(i, dummy.matrix);
   }
-  grassMesh.instanceMatrix.needsUpdate = true;
   flowerMesh.instanceMatrix.needsUpdate = true;
   // Pond and a moving waterfall spill off the meadow into the clouds.
   const waterMat = mat(0x76d5d1, {
@@ -291,72 +282,79 @@ export function createWorld(scene) {
         crystals.push(crystal);
       }
     }
+  const jewelGeo = gemGeometry();
+  const jewelMat = new T.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 0.25,
+    roughness: 0.14,
+    clearcoat: 1,
+    clearcoatRoughness: 0.08,
+    envMapIntensity: 1.4,
+    flatShading: true,
+  });
   for (const gem of LEVEL.gems) {
-    const geo = new T.OctahedronGeometry(0.37);
-    const m = mesh(
-      geo,
-      mat(gem.color, {
-        metalness: 0.35,
-        roughness: 0.25,
-        emissive: gem.color,
-        emissiveIntensity: 0.16,
-      }),
-      root,
-      gem.x,
-      gem.y,
-      gem.z,
-    );
-    m.scale.set(0.75, 1.2, 0.75);
+    const m = new T.Object3D();
+    m.position.set(gem.x, gem.y, gem.z);
     gemMeshes.set(gem.id, m);
+  }
+  for (const c of LEVEL.chests) {
+    const m = createChest();
+    m.position.set(c.x, c.y, c.z);
+    m.rotation.y = 0.15;
+    root.add(m);
+    chestMeshes.set(c.id, m);
   }
   for (const r of LEVEL.rescues) {
     const g = new T.Group();
     g.position.set(r.x, r.y, r.z);
     root.add(g);
     mesh(new T.CylinderGeometry(1.3, 1.5, 0.4, 12), stoneMat, g, 0, 0.2, 0);
-    const dragon = createDragon(0.65, 0xe4be78);
+    const dragon = createDragon(0.9, 0xe4be78);
     dragon.position.y = 0.4;
     dragon.rotation.y = 0.5;
     g.add(dragon);
-    const cage = mesh(
-      new T.IcosahedronGeometry(1.8, 1),
-      new T.MeshStandardMaterial({
-        color: 0x8bded1,
-        transparent: true,
-        opacity: 0.21,
-        roughness: 0.2,
-        metalness: 0.3,
-        wireframe: false,
-        depthWrite: false,
-      }),
-      g,
-      0,
-      1.3,
-      0,
-    );
-    const cageLines = mesh(
-      new T.IcosahedronGeometry(1.81, 1),
-      new T.MeshBasicMaterial({
-        color: 0xa9ffe6,
-        transparent: true,
-        opacity: 0.32,
-        wireframe: true,
-      }),
-      g,
-      0,
-      1.3,
-      0,
-    );
+    const originals = new Map();
+    const emerald = new T.MeshPhysicalMaterial({
+      color: 0x35ac78,
+      metalness: 0.2,
+      roughness: 0.21,
+      clearcoat: 1,
+      envMapIntensity: 1.2,
+    });
+    dragon.traverse((o) => {
+      if (o.isMesh) {
+        originals.set(o, o.material);
+        o.material = emerald;
+      }
+    });
+    // A frozen statue needs one draw; retain the animated model for its release.
+    const statue = new T.Group();
+    statue.position.copy(dragon.position);
+    statue.rotation.copy(dragon.rotation);
+    statue.scale.copy(dragon.scale);
+    dragon.updateMatrixWorld(true);
+    const inverse = dragon.matrixWorld.clone().invert();
+    dragon.traverse((o) => {
+      if (o.isMesh) {
+        const copy = new T.Mesh(o.geometry, emerald);
+        copy.applyMatrix4(inverse.clone().multiply(o.matrixWorld));
+        copy.castShadow = copy.receiveShadow = true;
+        statue.add(copy);
+      }
+    });
+    g.add(statue);
+    batchStatic(statue);
+    dragon.visible = false;
     const halo = mesh(
       new T.TorusGeometry(1.45, 0.055, 5, 36),
-      mat(0xc1ffe4, { emissive: 0x8bffd8, emissiveIntensity: 0.8 }),
+      mat(0xb9ffe0, { emissive: 0x55f8a1, emissiveIntensity: 0.65 }),
       g,
       0,
-      0.48,
+      0.45,
       0,
     );
-    halo.rotation.x = Math.PI / 2;
-    g.userData = { dragon, cage, cageLines, halo };
+    halo.rotation.x = -Math.PI / 2;
+    g.userData = { dragon, statue, emerald, originals, halo, freed: false };
     rescueMeshes.set(r.id, g);
   }
   for (const e of LEVEL.enemies) {
@@ -392,20 +390,38 @@ export function createWorld(scene) {
     root.add(g);
     for (let j = 0; j < 4; j++) orb(g, cloudMat, j * 5, rand() * 2, rand() * 5, 8, 3.3, 5);
   }
-  const gemBatch = new T.InstancedMesh(
-    new T.OctahedronGeometry(0.37),
-    mat(0xffffff, { metalness: 0.35, roughness: 0.25 }),
-    LEVEL.gems.length,
-  );
+  const gemBatch = new T.InstancedMesh(jewelGeo, jewelMat, LEVEL.gems.length);
+  gemBatch.frustumCulled = false;
   root.add(gemBatch);
   for (const [i, gem] of LEVEL.gems.entries()) {
     const m = gemMeshes.get(gem.id);
-    m.removeFromParent();
     m.updateMatrix();
     gemBatch.setMatrixAt(i, m.matrix);
     gemBatch.setColorAt(i, new T.Color(gem.color));
   }
-  const excluded = new Set([...rescueMeshes.values(), ...enemyMeshes.values(), portal, ...waters]);
+  const excluded = new Set([
+    ...rescueMeshes.values(),
+    ...enemyMeshes.values(),
+    ...chestMeshes.values(),
+    portal,
+    ...waters,
+  ]);
   batchStatic(root, excluded);
-  return { root, gemBatch, gemMeshes, rescueMeshes, enemyMeshes, portal, waterTex, waters };
+  const collisionMeshes = root.children.filter(
+    (m) =>
+      m.isMesh && !m.isInstancedMesh && [stoneMat, rockMat, woodMat, roof].includes(m.material),
+  );
+  return {
+    root,
+    gemBatch,
+    gemMeshes,
+    rescueMeshes,
+    enemyMeshes,
+    chestMeshes,
+    grassSystem,
+    collisionMeshes,
+    portal,
+    waterTex,
+    waters,
+  };
 }

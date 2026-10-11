@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Input } from '../dist/engine/input.js';
+import { ChaseCamera } from '../dist/engine/chase-camera.js';
+import { Simulation } from '../dist/engine/simulation.js';
+import { LEVEL } from '../dist/game/level.js';
 class Element {
   constructor(action) {
     this.dataset = { action };
@@ -87,4 +90,41 @@ test('blocked gamepad policy leaves keyboard and touch playable', () => {
     throw new Error('SecurityError');
   };
   assert.doesNotThrow(() => input.sample(0));
+});
+test('holding right follows a straight heading as the chase camera turns', () => {
+  const { input } = setup(),
+    camera = new ChaseCamera();
+  const sim = new Simulation({
+    ...LEVEL,
+    islands: [{ x: 0, z: 0, y: 0, r: 200 }],
+    obstacles: [],
+    enemies: [],
+    rescues: [],
+  });
+  input.keys.add('KeyD');
+  for (let i = 0; i < 360; i++) {
+    sim.update(1 / 60, input.sample(camera.angle));
+    camera.update(1 / 60, sim.player);
+  }
+  assert.ok(sim.player.x > 40);
+  assert.ok(Math.abs(sim.player.z - 10) < 0.01);
+  input.keys.clear();
+  input.sample(camera.angle);
+  input.keys.add('KeyW');
+  const next = input.sample(camera.angle);
+  assert.ok(next.x > 0.9, 'new gesture must use the new camera direction');
+});
+test('a released and restarted movement gesture uses the new view between samples', () => {
+  const { input, joy } = setup();
+  window.emit('keydown', { code: 'KeyD' });
+  input.sample(0);
+  window.emit('keyup', { code: 'KeyD' });
+  window.emit('keydown', { code: 'KeyW' });
+  assert.ok(input.sample(-Math.PI / 2).x > 0.9);
+  input.clear();
+  joy.emit('pointerdown', { pointerId: 1, clientX: 90, clientY: 50 });
+  input.sample(0);
+  joy.emit('pointerup', { pointerId: 1 });
+  joy.emit('pointerdown', { pointerId: 2, clientX: 50, clientY: 10 });
+  assert.ok(input.sample(-Math.PI / 2).x > 0.9);
 });

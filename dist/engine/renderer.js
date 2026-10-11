@@ -3,12 +3,16 @@ import { createWorld } from '../game/world.js';
 import { createDragon, animateDragon, mat, orb } from '../game/assets.js';
 import { Particles } from './particles.js';
 import { FireBreath } from './fire-breath.js';
+import { ChaseCamera } from './chase-camera.js';
+import { terrainHeight } from './simulation.js';
+import { ScorchMarks } from '../game/scorch.js';
+import { updateRescue } from '../game/rescue.js';
 export class GameRenderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.scene = new T.Scene();
-    this.scene.fog = new T.FogExp2(0xc7d9c8, 0.0048);
-    this.camera = new T.PerspectiveCamera(53, 1, 0.1, 400);
+    this.scene.fog = new T.FogExp2(0xc9bed5, 0.0036);
+    this.camera = new T.PerspectiveCamera(58, 1, 0.1, 400);
     this.renderer = new T.WebGLRenderer({
       canvas,
       antialias: true,
@@ -24,7 +28,7 @@ export class GameRenderer {
     const skyMat = new T.ShaderMaterial({
       side: T.BackSide,
       depthWrite: false,
-      uniforms: { top: { value: new T.Color(0x83b9c6) }, bottom: { value: new T.Color(0xffe5b7) } },
+      uniforms: { top: { value: new T.Color(0x8ca8d4) }, bottom: { value: new T.Color(0xffcc99) } },
       vertexShader:
         'varying vec3 vWorld;void main(){vWorld=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
       fragmentShader:
@@ -54,7 +58,13 @@ export class GameRenderer {
     );
     disc.position.set(-110, 68, -150);
     this.scene.add(disc);
+    this.scene.environment = reflectionSky();
     this.world = createWorld(this.scene);
+    this.scorch = new ScorchMarks(this.scene);
+    this.chase = new ChaseCamera();
+    this.ray = new T.Raycaster();
+    this.cameraDesired = new T.Vector3();
+    this.rayDirection = new T.Vector3();
     this.dragon = createDragon(0.86);
     this.scene.add(this.dragon);
     this.particles = new Particles(this.scene);
@@ -73,8 +83,7 @@ export class GameRenderer {
         0.1,
       );
     this.scene.add(this.companion);
-    this.angle = 0.24;
-    this.distance = 10.5;
+    this.angle = 0;
     this.target = new T.Vector3(0, 1.5, 10);
     this.time = 0;
     this.quality = 'high';
@@ -86,6 +95,21 @@ export class GameRenderer {
     });
     canvas.addEventListener('webglcontextrestored', () => location.reload());
   }
+  resetAdventure() {
+    this.chase = new ChaseCamera();
+    this.angle = 0;
+    this.world.grassSystem.field.burn.fill(0);
+    for (const group of this.world.grassSystem.groups) {
+      group.geometry.attributes.burn.array.fill(0);
+      group.geometry.attributes.burn.needsUpdate = true;
+    }
+    for (const mark of this.scorch.marks) {
+      mark.life = 0;
+      mark.mesh.visible = false;
+    }
+    this.scorch.lastX = Infinity;
+    this.scorch.elapsed = 0;
+  }
   resize() {
     const w = this.canvas.clientWidth,
       h = this.canvas.clientHeight;
@@ -96,6 +120,7 @@ export class GameRenderer {
   }
   setQuality(value) {
     this.quality = value;
+    this.world.grassSystem.setQuality(value);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, value === 'low' ? 1 : 1.5));
     this.renderer.shadowMap.enabled = value !== 'low';
     this.resize();
@@ -107,48 +132,60 @@ export class GameRenderer {
     this.dragon.rotation.y = playing ? p.angle : 0.5;
     this.dragon.visible = !(p.invincible > 0 && Math.floor(p.invincible * 10) % 2 === 0);
     animateDragon(this.dragon, this.time, Math.hypot(p.vx, p.vz), p.gliding, p.charging);
-    const desired = new T.Vector3(p.x, p.y + 1.5, p.z);
-    this.target.lerp(desired, 1 - Math.exp(-dt * 7));
     if (playing) {
-      this.angle += orbit;
-      const cp = new T.Vector3(
-        this.target.x + Math.sin(this.angle) * this.distance,
-        this.target.y + 6.1,
-        this.target.z + Math.cos(this.angle) * this.distance,
-      );
-      this.camera.position.lerp(cp, 1 - Math.exp(-dt * 6));
+      const c = this.chase.update(effectsActive ? dt : 0, p, orbit);
+      this.angle = c.angle;
+      this.target.set(c.targetX, c.targetY, c.targetZ);
+      this.cameraDesired.set(c.x, c.y, c.z);
+      // Keep the low camera out of stonework and above the walkable terrain.
+      const floor = terrainHeight(sim.level, c.x, c.z);
+      if (floor !== null) this.cameraDesired.y = Math.max(this.cameraDesired.y, floor + 1.05);
+      this.rayDirection.copy(this.cameraDesired).sub(this.target);
+      const distance = this.rayDirection.length();
+      this.rayDirection.normalize();
+      this.ray.set(this.target, this.rayDirection);
+      this.ray.far = distance;
+      const hits = this.ray.intersectObjects(this.world.collisionMeshes, false);
+      if (hits.length)
+        this.cameraDesired
+          .copy(this.target)
+          .addScaledVector(this.rayDirection, Math.max(0.8, hits[0].distance - 0.4));
+      this.camera.position.copy(this.cameraDesired);
       this.camera.lookAt(this.target);
     } else {
       const a = 0.4 + Math.sin(this.time * 0.08) * 0.055;
       this.camera.position.set(p.x + Math.sin(a) * 14, p.y + 6.8, p.z + Math.cos(a) * 14);
       this.camera.lookAt(p.x - 1, p.y + 1.5, p.z - 4);
     }
-    for (const [i, gem] of sim.level.gems.entries()) {
+    for (const [i, gem] of sim.gems.entries()) {
       const m = this.world.gemMeshes.get(gem.id);
-      m.scale.setScalar(sim.collected.has(gem.id) ? 0 : 1);
-      m.scale.x *= 0.75;
-      m.scale.y *= 1.2;
-      m.scale.z *= 0.75;
+      m.scale.setScalar(!gem.active || sim.collected.has(gem.id) ? 0 : 1);
+
       m.rotation.y = this.time * 0.85;
-      m.position.y = gem.y + Math.sin(this.time * 2 + m.position.x) * 0.14;
+      m.position.set(gem.x, gem.y + Math.sin(sim.time * 2 + gem.x) * 0.08, gem.z);
       m.updateMatrix();
       this.world.gemBatch.setMatrixAt(i, m.matrix);
     }
     this.world.gemBatch.instanceMatrix.needsUpdate = true;
     for (const [id, m] of this.world.rescueMeshes) {
-      const freed = sim.rescued.has(id);
-      m.userData.cage.visible = m.userData.cageLines.visible = !freed;
-      m.userData.cage.rotation.y = this.time * 0.15;
-      m.userData.cageLines.rotation.y = this.time * 0.15;
-      m.userData.halo.rotation.z = this.time * 0.2;
-      animateDragon(m.userData.dragon, this.time, 0, false, false);
+      updateRescue(m.userData, sim.rescued.has(id), sim.time, sim.rescueTimes.get(id));
     }
+    for (const [id, m] of this.world.chestMeshes) m.visible = !sim.broken.has(id);
     for (const e of sim.enemies) {
       const m = this.world.enemyMeshes.get(e.id);
       m.visible = !sim.defeated.has(e.id);
-      m.position.set(e.x, e.y + Math.abs(Math.sin(this.time * 4)) * 0.05, e.z);
-      m.rotation.y = Math.atan2(p.x - e.x, p.z - e.z);
+      m.position.set(e.x, e.y + Math.abs(Math.sin(sim.time * (e.fleeing ? 11 : 4))) * 0.06, e.z);
+      m.rotation.y = e.angle ?? 0;
+      const limbs = m.userData.legs || [];
+      limbs.forEach(
+        (leg, i) =>
+          (leg.rotation.x =
+            Math.sin(sim.time * (e.fleeing ? 13 : 5) + i * Math.PI) * (e.fleeing ? 0.5 : 0.18)),
+      );
+      if (m.userData.sack) m.userData.sack.rotation.z = Math.sin(sim.time * 8) * 0.08;
     }
+    this.world.grassSystem.update(dt, p, effectsActive, sim.time);
+    this.scorch.update(dt, p, effectsActive, sim.level);
     this.world.portal.userData.glow.material.color.setHex(sim.unlocked ? 0x83f7cd : 0x5e7ea3);
     this.world.portal.userData.glow.material.opacity = 0.55 + Math.sin(this.time * 2) * 0.15;
     this.world.waterTex.offset.y -= dt * 0.18;
@@ -173,4 +210,28 @@ export class GameRenderer {
       3,
     );
   }
+}
+
+/** Tiny procedural sky reflection, prefiltered by Three for jewel facets. */
+function reflectionSky() {
+  const images = [];
+  for (let face = 0; face < 6; face++) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const ctx = canvas.getContext('2d'),
+      gradient = ctx.createLinearGradient(0, 0, 0, 128);
+    gradient.addColorStop(0, '#a6dff2');
+    gradient.addColorStop(0.5, '#d4eff2');
+    gradient.addColorStop(0.65, '#fff1cf');
+    gradient.addColorStop(1, '#629349');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#fffdf0';
+    ctx.fillRect(face % 2 ? 18 : 75, 24, 15, 24);
+    images.push(canvas);
+  }
+  const cube = new T.CubeTexture(images);
+  cube.colorSpace = T.SRGBColorSpace;
+  cube.needsUpdate = true;
+  return cube;
 }

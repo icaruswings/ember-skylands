@@ -35,6 +35,9 @@ export async function loadArtTextures() {
   textures.set('scales', scales);
   textures.set('bark', bark);
   textures.set('armor', armorTexture());
+  textures.set('cloth', clothTexture());
+  textures.set('skin', skinTexture());
+  textures.set('horn', hornTexture());
   for (const tex of textures.values()) {
     tex.colorSpace = T.SRGBColorSpace;
     tex.anisotropy = 4;
@@ -43,6 +46,77 @@ export async function loadArtTextures() {
   for (const [kind, tex] of textures) normals.set(kind, reliefNormals(tex.image));
   atlas.dispose();
   materials.clear();
+}
+
+function clothTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1024;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#e2d6bd';
+  c.fillRect(0, 0, 1024, 1024);
+  // Woven neutral fibers tint cleanly for tunics and overfilled treasure sacks.
+  for (let i = 0; i < 1024; i += 4) {
+    c.strokeStyle = i % 8 ? '#cabda5' : '#f4e8d2';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(i, 0);
+    c.lineTo(i, 1024);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0, i);
+    c.lineTo(1024, i);
+    c.stroke();
+  }
+  return new T.CanvasTexture(canvas);
+}
+function skinTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#e9e2cf';
+  ctx.fillRect(0, 0, 1024, 1024);
+  let seed = 917;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let i = 0; i < 3200; i++) {
+    ctx.fillStyle = i % 2 ? 'rgba(116,108,82,.035)' : 'rgba(255,247,216,.12)';
+    ctx.beginPath();
+    ctx.ellipse(
+      random() * 1024,
+      random() * 1024,
+      8 + random() * 25,
+      4 + random() * 13,
+      random() * 6.28,
+      0,
+      6.28,
+    );
+    ctx.fill();
+  }
+  for (let i = 0; i < 19000; i++) {
+    ctx.fillStyle = i % 3 ? 'rgba(116,107,79,.09)' : 'rgba(255,251,228,.2)';
+    ctx.beginPath();
+    ctx.arc(random() * 1024, random() * 1024, 0.35 + random() * 0.7, 0, 6.28);
+    ctx.fill();
+  }
+  return new T.CanvasTexture(canvas);
+}
+function hornTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f4e9c7';
+  ctx.fillRect(0, 0, 512, 512);
+  for (let y = 12; y < 512; y += 42) {
+    const band = ctx.createLinearGradient(0, y - 5, 0, y + 8);
+    band.addColorStop(0, 'rgba(137,106,47,0)');
+    band.addColorStop(0.55, 'rgba(137,106,47,.2)');
+    band.addColorStop(1, 'rgba(255,254,221,.15)');
+    ctx.fillStyle = band;
+    ctx.fillRect(0, y - 5, 512, 13);
+  }
+  return new T.CanvasTexture(canvas);
 }
 
 function armorTexture() {
@@ -113,7 +187,7 @@ export function surface(kind, color = 0xffffff) {
         color,
         map: map ?? null,
         normalMap: normals.get(kind) ?? null,
-        normalScale: new T.Vector2(0.6, 0.6),
+        normalScale: new T.Vector2(kind === 'skin' ? 0.18 : 0.6, kind === 'skin' ? 0.18 : 0.6),
         roughness: kind === 'scales' ? 0.67 : kind === 'armor' ? 0.6 : 0.9,
         metalness: kind === 'armor' ? 0.3 : 0,
         emissive: kind === 'foliage' ? 0x5f7937 : 0x000000,
@@ -122,5 +196,8 @@ export function surface(kind, color = 0xffffff) {
       }),
     );
   }
-  return materials.get(key);
+  const material = materials.get(key);
+  material.userData.surfaceKind = kind;
+  material.userData.tint = color;
+  return material;
 }

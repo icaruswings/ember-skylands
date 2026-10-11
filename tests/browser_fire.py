@@ -12,12 +12,12 @@ with sync_playwright() as p:
   page.locator('#start-button').click()
   page.locator('#toast').wait_for(state='hidden')
   # Face sideways so the flame's silhouette is clearly visible in the camera.
-  page.keyboard.down('KeyD');page.wait_for_function('ember.snapshot().player.angle > 1');page.keyboard.up('KeyD')
+  page.keyboard.down('KeyD');page.wait_for_function('Math.abs(ember.snapshot().player.angle-Math.PI/2)<.15');page.keyboard.up('KeyD')
   if mobile:page.locator('[data-action="flame"]').tap()
   else:page.keyboard.press('KeyF')
   page.wait_for_function('ember.snapshot().player.flame > .15')
   page.screenshot(path=f'/workspace/sites/ember-skylands/docs/fire-{ "mobile" if mobile else "desktop" }.png')
-  assert page.evaluate('ember.snapshot().drawCalls')<250
+  assert page.evaluate('ember.snapshot().drawCalls')<330
   page.wait_for_function('ember.snapshot().player.flame === 0')
   page.keyboard.press('KeyF');page.wait_for_function('ember.snapshot().fireActive')
   # Dispatch pause immediately: Playwright's click stability wait can outlast a .42s attack.

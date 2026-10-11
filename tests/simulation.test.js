@@ -94,7 +94,13 @@ test('portal requires three rescues and thirty gems', () => {
   assert.equal(s.complete, true);
 });
 test('save validation drops invalid identifiers and corrupt input', () => {
-  assert.deepEqual(validSave(null, LEVEL), { gems: [], rescues: [], enemies: [], complete: false });
+  assert.deepEqual(validSave(null, LEVEL), {
+    gems: [],
+    rescues: [],
+    enemies: [],
+    chests: [],
+    complete: false,
+  });
   const v = validSave(
     {
       version: 1,
@@ -147,19 +153,19 @@ test('complete adventure is reachable by moving through bridges without teleport
   };
   for (const g of LEVEL.gems.slice(0, 20)) walk(g.x, g.z);
   walk(12, 1);
-  assert.equal(s.interact()?.type, 'rescue');
+  assert.ok(s.rescued.has(LEVEL.rescues[0].id));
   walk(14, -8);
   walk(27, -16);
   for (const g of LEVEL.gems.slice(20, 40)) walk(g.x, g.z);
   walk(38, -23);
-  assert.equal(s.interact()?.type, 'rescue');
+  assert.ok(s.rescued.has(LEVEL.rescues[1].id));
   walk(27, -16);
   walk(14, -8);
   walk(0, 0);
   walk(-14, -10);
   walk(-24, -20);
   walk(-33, -27);
-  assert.equal(s.interact()?.type, 'rescue');
+  assert.ok(s.rescued.has(LEVEL.rescues[2].id));
   walk(-24, -20);
   walk(-14, -10);
   walk(-7, -6);

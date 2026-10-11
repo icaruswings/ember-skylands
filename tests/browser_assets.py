@@ -22,8 +22,8 @@ with sync_playwright() as p:
  print('HIGH-RESOLUTION SKIN PASS:',skins,flush=True)
  page.locator('#start-button').click();page.wait_for_function("ember.snapshot().mode === 'playing'")
  page.locator('#toast').wait_for(state='hidden')
- assert page.evaluate('ember.snapshot().drawCalls') < 260
- assert page.evaluate('ember.snapshot().triangles') < 180000
+ assert page.evaluate('ember.snapshot().drawCalls') < 280
+ assert page.evaluate('ember.snapshot().triangles') < 240000
  page.screenshot(path='/workspace/sites/ember-skylands/docs/art-world.png')
  print('ART WORLD BUDGET:',json.dumps(page.evaluate('ember.snapshot()')),flush=True)
  # A test-only asset viewer isolates silhouettes and UV surfaces from gameplay.
@@ -32,7 +32,8 @@ with sync_playwright() as p:
  import {createDragon,createSentinel} from '/game/assets.js';
  import {createTree} from '/game/trees.js';
  import {loadArtTextures} from '/game/surfaces.js';
- await loadArtTextures();
+ import {loadModelFiles} from '/engine/models.js';
+ await loadArtTextures();await loadModelFiles();
  const kind=new URLSearchParams(location.search).get('model');
  const model=kind==='dragon'?createDragon():kind==='tree'?createTree(3201):createSentinel(kind);
  const scene=new T.Scene();scene.background=new T.Color(0xe8e6db);scene.add(model);

@@ -6,6 +6,7 @@ import { enterFullscreen, protectGameGestures } from './engine/display.js';
 import { readSave, writeSave, clearSave, readSettings, writeSettings } from './engine/storage.js';
 import { LEVEL } from './game/level.js';
 import { loadArtTextures } from './game/surfaces.js';
+import { loadModelFiles } from './engine/models.js';
 const $ = (id) => document.getElementById(id),
   icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
 let sim = new Simulation(LEVEL, readSave()),
@@ -31,12 +32,12 @@ function scripts() {
     {
       id: 'welcome',
       when: (s) => s.rescued.size === 1,
-      run: () => toast('A sky spirit is free. Your checkpoint has been saved.'),
+      run: () => {},
     },
     {
       id: 'unlocked',
       when: (s) => s.unlocked,
-      run: () => toast('The Sunstone portal is open! Return to the castle.'),
+      run: () => toast('The castle portal is open! Return to the castle.'),
     },
   ]);
 }
@@ -75,7 +76,7 @@ function start() {
   toast(
     sim.collected.size
       ? 'Welcome back, little dragon. Your adventure continues.'
-      : 'Find the three sky spirits. Follow the gem trails.',
+      : 'Follow the red gems. Break chests, chase Gnorcs, and free the stone dragons.',
   );
 }
 function openDialog(content) {
@@ -94,7 +95,7 @@ function closeDialog() {
 }
 function guide() {
   openDialog(
-    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The Skylands have lost their light. Free Sol, Fern and Luma from their crystal prisons, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored sentinels need a charge; large ones need flame.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Get close to a crystal spirit and press <kbd>E</kbd> or Rescue. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Rise and Crystal Crown. Gems are collected automatically. If you fall, you return safely to your last checkpoint. Gamepad: A jump, X flame, B charge, Y rescue.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The dragon kingdom has lost its light. Free Sol, Fern and Luma from their emerald statues, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored Gnorcs need a charge; large ones need flame. Flame or charge wooden chests for green treasure.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Walk close to a stone dragon and watch them break free and dance. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Hollow and Dragon Heights. Red gems pull toward you. Chase the sack-carrying Gnorcs for green gems. If you fall, you return safely to your last checkpoint. Gamepad: A jump, X flame, B charge, Y portal.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
   );
   $('guide-done').onclick = closeDialog;
 }
@@ -114,12 +115,13 @@ function openSettings() {
   $('settings-done').onclick = closeDialog;
   $('reset-button').onclick = () => {
     openDialog(
-      `<span class="dialog-eyebrow">A NEW BEGINNING</span><h2 id="dialog-title">Start a fresh adventure?</h2><p>This clears the gems, spirits and sentinels saved on this device.</p><div class="dialog-actions"><button id="confirm-reset" class="primary-button">Start fresh</button><button id="cancel-reset" class="secondary-button">Keep my adventure</button></div>`,
+      `<span class="dialog-eyebrow">A NEW BEGINNING</span><h2 id="dialog-title">Start a fresh adventure?</h2><p>This clears the gems, chests, dragon friends and Gnorcs saved on this device.</p><div class="dialog-actions"><button id="confirm-reset" class="primary-button">Start fresh</button><button id="cancel-reset" class="secondary-button">Keep my adventure</button></div>`,
     );
     $('cancel-reset').onclick = openSettings;
     $('confirm-reset').onclick = () => {
       clearSave();
       sim = new Simulation(LEVEL);
+      render.resetAdventure();
       scripts();
       dialogReturn = 'intro';
       $('start-button').innerHTML = `Let’s explore ${icon('arrow')}`;
@@ -185,10 +187,10 @@ function drawMap(canvas, big = false) {
       c.fillText(island.name, x, z + island.r * scale * 0.55);
     }
   }
-  for (const g of LEVEL.gems)
-    if (!sim.collected.has(g.id)) {
+  for (const g of sim.gems)
+    if (g.active && !sim.collected.has(g.id)) {
       const [x, z] = pos(g.x, g.z);
-      c.fillStyle = '#bf9659';
+      c.fillStyle = g.source ? '#39a657' : '#d44b55';
       c.fillRect(x - 1, z - 1, big ? 3 : 1.5, big ? 3 : 1.5);
     }
   for (const r of LEVEL.rescues) {
@@ -211,7 +213,7 @@ function drawMap(canvas, big = false) {
   c.save();
   c.translate(px, pz);
   c.rotate(-sim.player.angle);
-  c.fillStyle = '#347f72';
+  c.fillStyle = '#8651ba';
   c.beginPath();
   c.moveTo(0, 6);
   c.lineTo(-4, -4);
@@ -222,7 +224,7 @@ function drawMap(canvas, big = false) {
 }
 function map() {
   openDialog(
-    `<span class="dialog-eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="dialog-title">The Skylands.</h2><canvas id="big-map" class="big-map" width="600" height="340" aria-label="Map of three islands and your position"></canvas>${LEVEL.islands.map((island, i) => `<div class="realm-row"><strong>${island.name}</strong><span>${sim.collected.size ? LEVEL.gems.filter((g) => g.id.startsWith('gem-') && Number(g.id.split('-')[1]) >= i * 20 && Number(g.id.split('-')[1]) < (i + 1) * 20 && sim.collected.has(g.id)).length : 0} / 20 gems</span><em>${sim.rescued.has(LEVEL.rescues[i].id) ? 'Spirit freed' : 'Find ' + LEVEL.rescues[i].name}</em></div>`).join('')}<p>Teal arrow: you · purple dots: sky spirits · gold dots: gems · square: home portal</p><button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="dialog-title">The Skylands.</h2><canvas id="big-map" class="big-map" width="600" height="340" aria-label="Map of three islands and your position"></canvas>${LEVEL.islands.map((island, i) => `<div class="realm-row"><strong>${island.name}</strong><span>${LEVEL.gems.filter((g) => g.zone === island.id && sim.collected.has(g.id)).length} / ${LEVEL.gems.filter((g) => g.zone === island.id).length} gems</span><em>${sim.rescued.has(LEVEL.rescues[i].id) ? 'Spirit freed' : 'Find ' + LEVEL.rescues[i].name}</em></div>`).join('')}<p>Purple arrow: you · emerald dots: dragon friends · red/green dots: gems · square: home portal</p><button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
   );
   drawMap($('big-map'), true);
   $('map-done').onclick = closeDialog;
@@ -230,16 +232,11 @@ function map() {
 function events() {
   for (const e of sim.drain()) {
     audio.effect(e.type, e.x ? (e.x - sim.player.x) / 12 : 0);
-    if (['gem', 'enemy', 'rescue'].includes(e.type)) {
+    if (['gem', 'enemy', 'rescue', 'chest'].includes(e.type)) {
       render.burst(e);
       save();
     }
-    if (e.type === 'rescue') {
-      openDialog(
-        `<span class="dialog-eyebrow">A SKY SPIRIT SET FREE</span><h2 id="dialog-title">Hello, ${e.name}.</h2><p>${e.message}</p><p>Your health is restored. This spot is now your checkpoint.</p><button id="rescue-done" class="primary-button">Onward, little dragon ${icon('arrow')}</button>`,
-      );
-      $('rescue-done').onclick = closeDialog;
-    }
+    if (e.type === 'rescue') toast(`${e.name} is free! ${e.message} Checkpoint saved.`);
     if (e.type === 'locked')
       toast(
         `The portal needs ${Math.max(0, 3 - sim.rescued.size)} more spirits and ${Math.max(0, 30 - sim.collected.size)} more gems.`,
@@ -248,7 +245,7 @@ function events() {
     if (e.type === 'complete') {
       save();
       openDialog(
-        `<span class="dialog-eyebrow">THE SKYLANDS SHINE AGAIN</span><h2 id="dialog-title">Little dragon. Big hero.</h2><p>Sol, Fern and Luma are free. The kingdom’s light has returned, and the way home is open. There’s always a little more wonder to find.</p><div class="results"><div><strong>${sim.collected.size} / 60</strong><span>GEMS DISCOVERED</span></div><div><strong>3 / 3</strong><span>SPIRITS FREED</span></div><div><strong>${sim.defeated.size} / 6</strong><span>SENTINELS</span></div></div><button id="win-continue" class="primary-button">Keep discovering ${icon('arrow')}</button>`,
+        `<span class="dialog-eyebrow">THE SKYLANDS SHINE AGAIN</span><h2 id="dialog-title">Little dragon. Big hero.</h2><p>Sol, Fern and Luma are free. The kingdom’s light has returned, and the way home is open. There’s always a little more wonder to find.</p><div class="results"><div><strong>${sim.collected.size} / ${LEVEL.gems.length}</strong><span>GEMS DISCOVERED</span></div><div><strong>3 / 3</strong><span>SPIRITS FREED</span></div><div><strong>${sim.defeated.size} / 6</strong><span>GNORCS</span></div></div><button id="win-continue" class="primary-button">Keep discovering ${icon('arrow')}</button>`,
       );
       $('win-continue').onclick = closeDialog;
     }
@@ -257,6 +254,7 @@ function events() {
 function updateHUD() {
   const p = sim.player;
   $('gem-count').textContent = sim.collected.size;
+  $('gem-total').textContent = '/ ' + LEVEL.gems.length;
   $('rescue-count').textContent = sim.rescued.size;
   $('health').setAttribute('aria-label', `${p.health} health`);
   [...$('health').children].forEach((e, i) => e.classList.toggle('lost', i >= p.health));
@@ -273,7 +271,7 @@ function updateHUD() {
     ? 'Find every gem. Follow every possibility.'
     : sim.unlocked
       ? 'Return to the portal at the meadow castle.'
-      : `Free ${3 - sim.rescued.size} sky spirits · Find ${Math.max(0, 30 - sim.collected.size)} more gems`;
+      : `Free ${3 - sim.rescued.size} dragon friends · Find ${Math.max(0, 30 - sim.collected.size)} more gems`;
   const near = sim.nearestInteraction();
   $('interaction-prompt').classList.toggle('hidden', !near);
   $('interaction-prompt').innerHTML = near
@@ -353,6 +351,7 @@ if (!audio.enabled) {
 }
 try {
   await loadArtTextures();
+  await loadModelFiles();
   render = new GameRenderer($('game'));
   render.setQuality(settings.quality === 'low' ? 'low' : 'high');
   $('loading').classList.add('hidden');
@@ -389,6 +388,15 @@ try {
       gems: sim.collected.size,
       rescues: sim.rescued.size,
       enemies: sim.defeated.size,
+      chests: sim.broken.size,
+      activeGems: sim.gems.filter((g) => g.active && !sim.collected.has(g.id)).length,
+      singedGrass: render.world.grassSystem.field.burn.reduce((n, b) => n + (b > 0 ? 1 : 0), 0),
+      camera: {
+        x: render.camera.position.x,
+        y: render.camera.position.y,
+        z: render.camera.position.z,
+        angle: render.angle,
+      },
       complete: sim.complete,
       unlocked: sim.unlocked,
       quality: render.quality,

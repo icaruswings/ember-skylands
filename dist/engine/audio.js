@@ -71,6 +71,7 @@ export class AudioEngine {
       jump: [220, 330],
       glide: [330, 440],
       enemy: [130, 98],
+      chest: [180, 90, 1174],
       damage: [160, 80],
       flame: [90, 65, 45],
     };
