@@ -2,6 +2,7 @@ import * as T from '../assets/three.module.js';
 import { mat, mesh, orb, block, texture, createDragon, createSentinel } from './assets.js';
 import { LEVEL } from './level.js';
 import { batchStatic } from '../engine/batching.js';
+import { createTree } from './trees.js';
 /** Scene construction is separate from gameplay. All assets are original procedural art. */
 export function createWorld(scene) {
   const root = new T.Group();
@@ -17,7 +18,6 @@ export function createWorld(scene) {
     rockMat = mat(0x9a9478),
     pathMat = mat(0xe7d0a4, { map: stone }),
     woodMat = mat(0xe3bc86, { map: wood }),
-    leaf = mat(0x759c4f),
     trunk = mat(0x92704e),
     roof = mat(0xc77b51);
   const crystals = [],
@@ -184,22 +184,10 @@ export function createWorld(scene) {
     );
   }
   function tree(x, y, z, s = 1) {
-    const g = new T.Group();
+    const g = createTree(Math.floor((x + 100) * 37 + (z + 100) * 173));
     g.position.set(x, y, z);
     g.scale.setScalar(s);
     root.add(g);
-    mesh(new T.CylinderGeometry(0.2, 0.4, 3.5, 7), trunk, g, 0, 1.75, 0);
-    const branch = mesh(new T.CylinderGeometry(0.1, 0.19, 2, 6), trunk, g, 0.55, 2.7, 0);
-    branch.rotation.z = -0.65;
-    for (const [px, py, pz, r] of [
-      [0, 4, 0, 1.9],
-      [1, 3.6, 0, 1.4],
-      [-0.9, 3.5, 0.5, 1.5],
-      [0, 4.8, -0.2, 1.3],
-    ]) {
-      const m = mesh(new T.IcosahedronGeometry(r, 1), leaf, g, px, py, pz);
-      m.scale.y = 0.78;
-    }
   }
   for (const [x, z, s] of [
     [-15, -4, 1.15],

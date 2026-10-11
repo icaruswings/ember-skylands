@@ -4,7 +4,7 @@ Date: 2026-10-11.
 
 ## Automated checks
 
-- 34 Node test cases pass: 16 simulation tests, five input tests, three storage tests, seven fire tests and three display/gesture tests.
+- 40 Node test cases pass: 16 simulation tests, five input tests, three storage tests, seven fire tests, three display/gesture tests and six model/UV/rig tests.
 - Syntax checks pass for every authored JavaScript module.
 - A simulation playthrough moves through both bridge routes, collects 40 gems, rescues every spirit and activates the portal without teleporting to objectives.
 - Independent code review identified lost short action taps and multi-touch ownership errors. Both were reproduced, covered by failing regression tests, fixed, and verified against the complete suite. Gamepad API denial is also covered.
@@ -15,8 +15,9 @@ Real headless Chromium, system binary, software WebGL rendering. Desktop viewpor
 
 - Phone: full viewport before Play, native fullscreen on Play, title/pause settings access, selection prevention, canceled context menu, long press, real multi-touch joystick plus charge, release cleanup, rapid jump/glide taps, pause/resume, map, responsive bounds and portrait/landscape controls pass. Missing and rejected fullscreen APIs both retain full viewport play and functional touch jumping. Audio context enters running state after starting.
 - Desktop: rendering, start, keyboard movement, jump/glide, pause freezes the simulation, resume, field guide, map, quality setting and sound initialization. Final rerun passed with no browser errors.
-- Fire update: desktop balanced/rich and phone balanced shader rendering, forward flame attack, bounded draw-call budget, expiry, pause mid-attack and resume pass with no browser errors. A paused attack now stops emission, extinguishes its light and lets existing embers cool away. Recorded 200 draw calls in rich desktop mode and 217 in the full-viewport landscape phone view.
+- Fire update: desktop balanced/rich and phone balanced shader rendering, forward flame attack, bounded draw-call budget, expiry, pause mid-attack and resume pass with no browser errors. A paused attack now stops emission, extinguishes its light and lets existing embers cool away. With the revised art, recorded 212 draw calls in rich desktop mode and 229 in the full-viewport landscape phone view (146,854 triangles).
 - Persistence: collect/save/reload, legal goal save restoration, actual keyboard movement to the portal, victory dialog, continue exploring, corrupt-save recovery and reset cancellation. Final rerun passed.
+- Art update: 1254px dragon skin and 512px normal-map loading pass; the live balanced desktop scene records 216 draw calls and 145,786 triangles. Isolated dragon, armored/giant sentinel and tree render checks pass with no browser errors. Updated phone checks also pass, recording 123 calls and 129,426 triangles in portrait. Independent review caught pupil occlusion and a UV-seam shading crease; regression tests failed before fixing both and now pass.
 
 ## Performance observations
 

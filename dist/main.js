@@ -5,6 +5,7 @@ import { AudioEngine } from './engine/audio.js';
 import { enterFullscreen, protectGameGestures } from './engine/display.js';
 import { readSave, writeSave, clearSave, readSettings, writeSettings } from './engine/storage.js';
 import { LEVEL } from './game/level.js';
+import { loadArtTextures } from './game/surfaces.js';
 const $ = (id) => document.getElementById(id),
   icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
 let sim = new Simulation(LEVEL, readSave()),
@@ -351,6 +352,7 @@ if (!audio.enabled) {
   $('sound-button').setAttribute('aria-pressed', 'false');
 }
 try {
+  await loadArtTextures();
   render = new GameRenderer($('game'));
   render.setQuality(settings.quality === 'low' ? 'low' : 'high');
   $('loading').classList.add('hidden');
