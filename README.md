@@ -32,14 +32,19 @@ Open http://localhost:4173. To deploy elsewhere, serve `dist/` as a static direc
 
 Armored sentinels require a charge; large sentinels require flame. Rescues restore health and set your fall-recovery checkpoint. Progress saves on this device, including collected gems, spirits and defeated enemies; player position resets to the meadow when reopening the game. Use Settings to reset it.
 
+Phones fill the viewport from the title screen. Tapping Play also requests native fullscreen where the browser supports it; unsupported or denied requests keep the same immersive layout. Settings are available on the title screen and through Pause. Game text cannot be selected, and controls suppress long-press menus. Safe-area spacing keeps controls clear of phone cutouts.
+
 ## Maintain
 
 - `dist/engine/simulation.js`: deterministic rendering-independent physics, gameplay state and safe script predicates.
 - `dist/engine/input.js`: unified keyboard, multi-touch and gamepad inputs with queued taps.
+- `dist/engine/display.js`: gesture-gated fullscreen and game selection/context-menu protection.
 - `dist/engine/renderer.js`: scene lighting, third-person camera and visual state adapter.
 - `dist/engine/batching.js`: geometry/material batching to reduce draw calls.
 - `dist/engine/audio.js`: original procedural soundtrack and positional effects.
-- `dist/engine/particles.js`: bounded particle pool.
+- `dist/engine/particles.js`: bounded collectible/effect particle pool.
+- `dist/engine/fire-breath.js`: dedicated animated fire shaders and warm light.
+- `dist/engine/flame-pool.js`: bounded, frame-independent flame and ember motion.
 - `dist/engine/storage.js`: resilient local storage wrappers.
 - `dist/game/level.js`: declarative islands, paths, goals, enemies, gems and rescue content.
 - `dist/game/assets.js`: original textured model factories and animation.
@@ -61,6 +66,7 @@ The Node suite covers gameplay, a complete movement-driven adventure, touch edge
 python tests/browser_smoke.py
 python tests/browser_mobile.py
 python tests/browser_progress.py
+python tests/browser_fire.py
 ```
 
 Browser tests use `/usr/bin/chromium` and software WebGL in headless mode. They test real input and rendered scenes. The final portal test restores a legal objective save before moving to the portal; the separate simulation adventure test reaches the objectives by moving through every bridge. See `docs/verification.md` for actual results and remaining physical-device limits.

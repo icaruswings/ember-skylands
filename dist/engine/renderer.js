@@ -2,6 +2,7 @@ import * as T from '../assets/three.module.js';
 import { createWorld } from '../game/world.js';
 import { createDragon, animateDragon, mat, orb } from '../game/assets.js';
 import { Particles } from './particles.js';
+import { FireBreath } from './fire-breath.js';
 export class GameRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -57,6 +58,7 @@ export class GameRenderer {
     this.dragon = createDragon(0.86);
     this.scene.add(this.dragon);
     this.particles = new Particles(this.scene);
+    this.fire = new FireBreath(this.scene);
     this.companion = new T.Group();
     orb(this.companion, mat(0xffd285, { emissive: 0xffad38, emissiveIntensity: 1 }), 0, 0, 0, 0.11);
     for (const s of [-1, 1])
@@ -98,7 +100,7 @@ export class GameRenderer {
     this.renderer.shadowMap.enabled = value !== 'low';
     this.resize();
   }
-  update(dt, sim, playing, orbit = 0) {
+  update(dt, sim, playing, orbit = 0, effectsActive = playing) {
     this.time += dt;
     const p = sim.player;
     this.dragon.position.set(p.x, p.y + 0.07, p.z);
@@ -156,19 +158,7 @@ export class GameRenderer {
       p.z + Math.sin(this.time * 2) * 1.2,
     );
     this.companion.children[0].material.color.setHex([0xffd285, 0x97dbef, 0x8be9a1][3 - p.health]);
-    if (p.flame > 0.01 && playing) {
-      const fx = p.x + Math.sin(p.angle) * 2,
-        fy = p.y + 1.2,
-        fz = p.z + Math.cos(p.angle) * 2;
-      this.particles.emit(
-        fx,
-        fy,
-        fz,
-        Math.random() > 0.5 ? 0xffb740 : 0xff6535,
-        this.quality === 'low' ? 2 : 6,
-        1.5,
-      );
-    }
+    this.fire.update(dt, p, effectsActive, this.time, this.quality, this.canvas.height);
     this.particles.update(dt);
     this.renderer.render(this.scene, this.camera);
   }

@@ -2,6 +2,7 @@ import { Simulation, FixedClock, ScriptSystem } from './engine/simulation.js';
 import { GameRenderer } from './engine/renderer.js';
 import { Input } from './engine/input.js';
 import { AudioEngine } from './engine/audio.js';
+import { enterFullscreen, protectGameGestures } from './engine/display.js';
 import { readSave, writeSave, clearSave, readSettings, writeSettings } from './engine/storage.js';
 import { LEVEL } from './game/level.js';
 const $ = (id) => document.getElementById(id),
@@ -22,6 +23,7 @@ const clock = new FixedClock(),
   };
 audio.setEnabled(settings.sound !== false);
 const input = new Input($('game'));
+protectGameGestures($('stage'));
 let scriptSystem;
 function scripts() {
   scriptSystem = new ScriptSystem([
@@ -64,6 +66,9 @@ function setMode(next) {
 }
 function start() {
   if (!render) return;
+  if (matchMedia('(pointer: coarse), (max-width: 700px)').matches) {
+    void enterFullscreen($('stage'));
+  }
   setMode('playing');
   audio.start();
   toast(
@@ -139,10 +144,11 @@ function pause() {
     return;
   }
   openDialog(
-    `<span class="dialog-eyebrow">TAKE A LITTLE BREATHER</span><h2 id="dialog-title">The Skylands can wait.</h2><p>Your adventure is saved. Ready when you are.</p><div class="dialog-actions"><button id="resume-button" class="primary-button">Keep exploring ${icon('arrow')}</button><button id="pause-guide" class="secondary-button">Field guide</button></div>`,
+    `<span class="dialog-eyebrow">TAKE A LITTLE BREATHER</span><h2 id="dialog-title">The Skylands can wait.</h2><p>Your adventure is saved. Ready when you are.</p><div class="dialog-actions"><button id="resume-button" class="primary-button">Keep exploring ${icon('arrow')}</button><button id="pause-guide" class="secondary-button">Field guide</button><button id="pause-settings" class="secondary-button">Settings</button></div>`,
   );
   $('resume-button').onclick = closeDialog;
   $('pause-guide').onclick = guide;
+  $('pause-settings').onclick = openSettings;
   save();
 }
 function drawMap(canvas, big = false) {
@@ -280,6 +286,7 @@ function updateHUD() {
 $('start-button').onclick = start;
 $('guide-tab').onclick = guide;
 $('settings-button').onclick = openSettings;
+$('mobile-settings-button').onclick = openSettings;
 $('sound-button').onclick = toggleSound;
 $('pause-button').onclick = pause;
 $('map-button').onclick = map;
@@ -297,8 +304,9 @@ $('adventure-tab').onclick = () => {
 $('fullscreen-button').onclick = async () => {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
-    else if ($('stage').requestFullscreen) await $('stage').requestFullscreen();
-    else toast('For a bigger view, turn your phone to landscape.');
+    else if (!(await enterFullscreen($('stage')))) {
+      toast('For a bigger view, turn your phone to landscape.');
+    }
   } catch {
     toast('Fullscreen is unavailable. Try landscape orientation.');
   }
@@ -361,7 +369,7 @@ try {
     }
     const orbit = input.orbit;
     input.orbit = 0;
-    render.update(dt, sim, mode !== 'intro', mode === 'playing' ? orbit : 0);
+    render.update(dt, sim, mode !== 'intro', mode === 'playing' ? orbit : 0, mode === 'playing');
     hudTime += dt;
     if (hudTime > 0.12) {
       updateHUD();
@@ -373,6 +381,8 @@ try {
   window.ember = Object.freeze({
     snapshot: () => ({
       mode,
+      fireActive: render.fire.root.visible,
+      fireParticles: render.fire.pool.activeCount,
       player: { ...sim.player },
       gems: sim.collected.size,
       rescues: sim.rescued.size,
