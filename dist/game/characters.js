@@ -58,8 +58,8 @@ export function createDragon(scale = 1, color = palette.dragon) {
       taper(
         [
           [0, 1, 0.45],
-          [0, 1.36, 0.77],
-          [0, 1.57, 1.0],
+          [0, 1.18, 0.69],
+          [0, 1.32, 0.87],
         ],
         [0.31, 0.28, 0.24],
         16,
@@ -93,27 +93,30 @@ export function createDragon(scale = 1, color = palette.dragon) {
     plate.rotation.x = -0.12;
   }
   const head = new T.Group();
-  head.position.set(0, 1.45, 0.9);
+  head.position.set(0, 1.28, 0.82);
   torso.add(head);
   mesh(
     geometry('skull', () =>
       loft(
         [
           [-0.53, 0.03, 0.03, 0.1],
-          [-0.25, 0.42, 0.38, 0.18],
-          [0.13, 0.45, 0.34, 0.2],
-          [0.4, 0.35, 0.24, 0.08],
-          [0.9, 0.3, 0.19, 0.015],
-          [1.18, 0.25, 0.13, -0.015],
+          [-0.25, 0.46, 0.34, 0.17],
+          [0.13, 0.5, 0.32, 0.18],
+          [0.4, 0.4, 0.25, 0.09],
+          [0.9, 0.35, 0.2, 0.025],
+          [1.18, 0.28, 0.15, 0.015],
           [1.24, 0.01, 0.01, -0.035],
         ],
         20,
         30,
-      ).scale(1, 1, 0.8),
+      ).scale(1, 1, 0.72),
     ),
     skin,
     head,
   );
+  const jaw = new T.Group();
+  jaw.position.set(0, -0.13, 0.25);
+  head.add(jaw);
   mesh(
     geometry('jaw', () =>
       loft(
@@ -125,17 +128,24 @@ export function createDragon(scale = 1, color = palette.dragon) {
         ],
         16,
         14,
-      ).scale(1, 1, 0.8),
+      )
+        .scale(1.06, 1, 0.72)
+        .translate(0, 0.13, -0.25),
     ),
     belly,
-    head,
+    jaw,
   );
+  const eyes = [];
   for (const s of [-1, 1]) {
     // White expressive eyes, a broad muzzle and swept golden horns define Spyro's silhouette.
-    orb(head, white, s * 0.39, 0.31, 0.4, 0.16, 0.195, 0.13);
-    orb(head, iris, s * 0.416, 0.31, 0.524, 0.096, 0.135, 0.035);
-    orb(head, dark, s * 0.419, 0.31, 0.56, 0.038, 0.105, 0.016);
-    orb(head, white, s * 0.443, 0.37, 0.579, 0.018);
+    const eye = new T.Group();
+    eye.position.set(s * 0.375, 0.31, 0.415);
+    head.add(eye);
+    orb(eye, white, 0, 0, 0, 0.135, 0.16, 0.065);
+    orb(eye, iris, s * 0.041, 0, 0.054, 0.077, 0.11, 0.024);
+    orb(eye, dark, s * 0.044, 0, 0.08, 0.034, 0.083, 0.016);
+    orb(eye, white, s * 0.065, 0.055, 0.103, 0.014);
+    eyes.push(eye);
     const brow = mesh(
       geometry('brow', () =>
         taper(
@@ -151,12 +161,12 @@ export function createDragon(scale = 1, color = palette.dragon) {
       ),
       skin,
       head,
-      s * 0.4,
-      0.49,
-      0.3,
+      s * 0.385,
+      0.45,
+      0.35,
     );
     brow.rotation.z = s * -0.2;
-    orb(head, dark, s * 0.205, 0.085, 0.896, 0.048, 0.03, 0.042);
+    orb(head, dark, s * 0.22, 0.095, 0.806, 0.048, 0.03, 0.042);
     mesh(
       geometry('horn-' + s, () =>
         taper(
@@ -165,7 +175,7 @@ export function createDragon(scale = 1, color = palette.dragon) {
             [s * 0.46, 0.97, -0.4],
             [s * 0.5, 1.43, -0.62],
           ],
-          [0.125, 0.09, 0.006],
+          [0.15, 0.105, 0.006],
           10,
           16,
         ),
@@ -197,7 +207,7 @@ export function createDragon(scale = 1, color = palette.dragon) {
     );
     ear.rotation.y = s * -0.25;
     // A shorter muzzle keeps the dragon's expressive face readable from the front.
-    link(head, dark, [s * 0.31, -0.12, 0.336], [s * 0.245, -0.105, 0.912], 0.015, 0.012, 6);
+    link(head, dark, [s * 0.34, -0.12, 0.31], [s * 0.27, -0.095, 0.821], 0.015, 0.012, 6);
   }
   const legs = [];
   for (const z of [-0.67, 0.57])
@@ -312,14 +322,14 @@ export function createDragon(scale = 1, color = palette.dragon) {
       w,
     );
     const elbow = [s * 1.12, 0.82, 0.02];
-    link(w, skin, [0, 0, 0.02], elbow, 0.07, 0.045, 8);
+    link(w, horn, [0, 0, 0.02], elbow, 0.07, 0.045, 8);
     for (const end of [
       [s * 2.32, 0.26, 0.02],
       [s * 1.64, -0.44, 0.02],
       [s * 0.84, -0.76, 0.02],
     ])
-      link(w, skin, elbow, end, 0.043, 0.018, 7);
-    link(w, skin, [0, 0, 0.02], [s * 0.84, -0.76, 0.02], 0.045, 0.02, 7);
+      link(w, horn, elbow, end, 0.043, 0.018, 7);
+    link(w, horn, [0, 0, 0.02], [s * 0.84, -0.76, 0.02], 0.045, 0.02, 7);
     mesh(
       geometry('wing-claw-' + s, () =>
         taper([elbow, [s * 1.18, 1, 0.02], [s * 1.34, 1.06, 0.02]], [0.05, 0.03, 0.002], 7, 8),
@@ -331,30 +341,76 @@ export function createDragon(scale = 1, color = palette.dragon) {
   }
   batchParts(root);
   root.scale.setScalar(scale);
-  root.userData = { torso, head, legs, tail, wings };
+  const mouth = new T.Group();
+  mouth.position.set(0, -0.12, 0.9);
+  head.add(mouth);
+  root.userData = { torso, head, legs, tail, wings, jaw, eyes, mouth };
   animateDragon(root, 0, 0, false, false);
   return root;
 }
 
-export function animateDragon(root, time, speed, gliding, charging) {
+/** Absolute local poses keep animation reproducible and safe for shared GLB clones. */
+export function animateDragon(root, time, speed, gliding, charging, state = {}) {
   const a = root.userData,
-    running = speed > 0.5;
-  a.torso.position.y =
-    running && !gliding ? Math.abs(Math.sin(time * 12)) * 0.085 : Math.sin(time * 2) * 0.025;
-  a.head.rotation.x = charging ? 0.15 : Math.sin(time * 2) * 0.025;
-  a.tail.rotation.y = Math.sin(time * 3) * 0.19;
-  for (let i = 0; i < a.legs.length; i++)
-    a.legs[i].rotation.x = gliding
-      ? 0.42
-      : running
-        ? Math.sin(time * (charging ? 19 : 12) + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.55
-        : 0;
-  for (let i = 0; i < 2; i++) {
-    const s = i === 0 ? -1 : 1;
-    a.wings[i].rotation.y = s * (gliding ? 0.06 : 0.66);
-    a.wings[i].rotation.z =
-      s * (gliding ? 0.1 + Math.sin(time * 7) * 0.09 : 0.3 + Math.sin(time * 3) * 0.065);
+    grounded = state.grounded ?? !gliding,
+    air = !grounded && !gliding,
+    running = speed > 0.5 && grounded,
+    effort = T.MathUtils.clamp(speed / 7, 0, 1),
+    rise = Math.tanh((state.vy ?? 0) / 6),
+    breathing = T.MathUtils.clamp((state.flame ?? 0) / 0.12, 0, 1),
+    phase = time * (charging ? 18 : 11),
+    idleLook = running || air || gliding || charging || breathing ? 0 : Math.sin(time * 0.7) * 0.13;
+  a.torso.position.y = running ? Math.sin(phase * 2) * 0.035 * effort : Math.sin(time * 2) * 0.018;
+  a.torso.rotation.set(
+    air ? -rise * 0.12 : charging ? 0.08 : gliding ? -0.06 : 0,
+    0,
+    running ? Math.sin(phase) * 0.025 * effort : 0,
+  );
+  a.head.position.y = 1.28 - (charging ? 0.13 : 0);
+  a.head.rotation.set(
+    breathing ? -0.025 : charging ? 0.26 : air ? -rise * 0.14 : Math.sin(time * 2) * 0.02,
+    idleLook,
+    idleLook * -0.24,
+  );
+  a.tail.rotation.set(
+    gliding ? -0.07 : air ? rise * 0.1 : 0,
+    Math.sin(time * (running ? 6 : 2.2)) * (running ? 0.13 : 0.18),
+    0,
+  );
+  // Front and hind pairs have a short offset, giving a gallop rather than a walk.
+  for (let i = 0; i < a.legs.length; i++) {
+    const hind = i < 2,
+      sign = i % 2 ? 1 : -1;
+    a.legs[i].rotation.set(
+      gliding
+        ? 0.48
+        : air
+          ? (hind ? 0.22 : -0.12) + rise * (hind ? 0.24 : -0.35)
+          : running
+            ? Math.sin(phase + (hind ? 1.35 : 0) + sign * 0.15) * 0.65 * effort
+            : 0,
+      0,
+      gliding ? sign * 0.09 : 0,
+    );
   }
+  for (let i = 0; i < 2; i++) {
+    const sign = i === 0 ? -1 : 1;
+    const spread = gliding ? 0.04 : air ? 0.22 : 0.77;
+    const flap = air ? Math.sin(time * 13) * (rise > 0 ? 0.24 : 0.08) : Math.sin(time * 3) * 0.04;
+    a.wings[i].rotation.set(
+      air ? -rise * 0.12 : 0,
+      sign * spread,
+      sign * (gliding ? 0.12 + Math.sin(time * 5) * 0.045 : air ? 0.12 + flap : 0.24 + flap),
+    );
+  }
+  if (a.jaw) a.jaw.rotation.x = breathing * 0.36;
+  // A brief smooth blink every few seconds; a positive minimum avoids singular transforms.
+  const blinkPhase = ((time % 4.7) + 4.7) % 4.7;
+  const blink =
+    blinkPhase > 3.9 && blinkPhase < 4.15
+      ? Math.sin(((blinkPhase - 3.9) / 0.25) * Math.PI) ** 2
+      : 0;
+  for (const eye of a.eyes ?? []) eye.scale.y = 1 - blink * 0.94;
 }
 
 /** Artist-built Gnorc: organic skin, floppy ears, tusks, cloth and a shoulder sack. */
@@ -369,6 +425,9 @@ export function createSentinel(type) {
     ivory = mat(0xf5d6a0),
     white = mat(0xfff7d5),
     iron = surface('armor', 0x6f7478);
+  const torso = new T.Group();
+  root.add(torso);
+  const arms = [];
   // Broad belly with a narrower neck; shoulders and hips disappear into the tunic.
   const torsoGeometry = geometry('gnorc-tunic', () => {
     const g = loft(
@@ -387,22 +446,22 @@ export function createSentinel(type) {
     g.rotateX(-Math.PI / 2);
     return g;
   });
-  mesh(torsoGeometry, cloth, root);
+  mesh(torsoGeometry, cloth, torso);
   // Leather belt follows the round potbelly instead of introducing square armor.
   const belt = mesh(
     geometry('gnorc-belt', () => new T.TorusGeometry(0.56, 0.05, 5, 24)),
     dark,
-    root,
+    torso,
     0,
     0.91,
     0.075,
   );
   belt.rotation.x = Math.PI / 2;
   belt.scale.y = 0.77;
-  orb(root, ivory, 0, 0.92, 0.505, 0.1, 0.075, 0.03);
+  orb(torso, ivory, 0, 0.92, 0.505, 0.1, 0.075, 0.03);
   const head = new T.Group();
   head.position.set(0, 1.89, 0.075);
-  root.add(head);
+  torso.add(head);
   mesh(
     geometry('gnorc-head', () =>
       loft(
@@ -476,7 +535,7 @@ export function createSentinel(type) {
   for (const sign of [-1, 1]) {
     const leg = new T.Group();
     leg.position.set(sign * 0.32, 0.68, 0);
-    root.add(leg);
+    torso.add(leg);
     link(leg, skin, [0, 0, 0], [sign * 0.05, -0.44, 0.025], 0.15, 0.1, 10);
     const boot = mesh(
       geometry('gnorc-boot', () =>
@@ -499,9 +558,13 @@ export function createSentinel(type) {
     );
     boot.rotation.y = sign * 0.14;
     legs.push(leg);
-    orb(root, skin, sign * 0.53, 1.47, 0, 0.2, 0.23, 0.22);
+    orb(torso, skin, sign * 0.53, 1.47, 0, 0.2, 0.23, 0.22);
   }
   // One hand grips the sack's mouth over his shoulder; the other balances a running gait.
+  const armLeft = new T.Group();
+  armLeft.position.set(-0.54, 1.46, 0);
+  torso.add(armLeft);
+  arms.push(armLeft);
   mesh(
     geometry('gnorc-arm-left', () =>
       taper(
@@ -513,12 +576,16 @@ export function createSentinel(type) {
         [0.16, 0.145, 0.105],
         10,
         12,
-      ),
+      ).translate(0.54, -1.46, 0),
     ),
     skin,
-    root,
+    armLeft,
   );
-  orb(root, skin, -0.73, 0.86, 0.35, 0.16, 0.18, 0.13);
+  orb(armLeft, skin, -0.19, -0.6, 0.35, 0.16, 0.18, 0.13);
+  const armRight = new T.Group();
+  armRight.position.set(0.54, 1.46, 0);
+  torso.add(armRight);
+  arms.push(armRight);
   mesh(
     geometry('gnorc-arm-right', () =>
       taper(
@@ -530,15 +597,15 @@ export function createSentinel(type) {
         [0.16, 0.14, 0.105],
         10,
         12,
-      ),
+      ).translate(-0.54, -1.46, 0),
     ),
     skin,
-    root,
+    armRight,
   );
-  orb(root, skin, 0.6, 1.8, 0.2, 0.145, 0.15, 0.13);
+  orb(armRight, skin, 0.06, 0.34, 0.2, 0.145, 0.15, 0.13);
   const sack = new T.Group();
   sack.position.set(0.66, 1.77, -0.25);
-  root.add(sack);
+  torso.add(sack);
   mesh(
     geometry('gnorc-sack', () => {
       const g = loft(
@@ -578,11 +645,93 @@ export function createSentinel(type) {
       0.34,
       0.01,
     );
-    for (const sign of [-1, 1]) orb(root, iron, sign * 0.54, 1.52, -0.025, 0.25, 0.13, 0.25);
+    for (const sign of [-1, 1]) orb(torso, iron, sign * 0.54, 1.52, -0.025, 0.25, 0.13, 0.25);
   }
   if (giant) root.scale.setScalar(1.35);
   // Preserve each animated leg and sack while batching their material surfaces.
   batchParts(root);
-  root.userData = { legs, head, sack, kind: 'gnorc' };
+  root.userData = { torso, legs, head, sack, arms, kind: 'gnorc', variant: type };
+  animateSentinel(root, 0, 0, { state: 'patrol' });
   return root;
+}
+
+/** Readable personality gestures: wary patrol, panicked sack runner, giant windup. */
+export function animateSentinel(root, time, speed, behaviorState = {}) {
+  const a = root.userData;
+  const behavior =
+    typeof behaviorState === 'string' ? behaviorState : (behaviorState.state ?? 'patrol');
+  const flee = behavior === 'flee' || behavior === 'fleeing',
+    alert = behavior === 'alert' || behavior === 'chase',
+    windup = behavior === 'windup',
+    strike = behavior === 'strike',
+    recover = behavior === 'recover',
+    effort = T.MathUtils.clamp(speed / 3.5, 0, 1),
+    phase = time * (flee ? 13 : 7),
+    tension = windup ? T.MathUtils.clamp((behaviorState.windup ?? 0.5) / 0.6, 0, 1) : 0;
+  if (a.torso) {
+    a.torso.position.y = strike
+      ? -0.15
+      : recover
+        ? -0.045
+        : windup
+          ? -0.1 * tension
+          : Math.abs(Math.sin(phase)) * effort * 0.055;
+    a.torso.rotation.set(
+      strike ? 0.29 : recover ? 0.09 : windup ? -0.17 * tension : flee ? 0.12 : 0,
+      0,
+      Math.sin(phase) * (flee ? 0.035 : 0.02) * effort,
+    );
+  }
+  a.head.rotation.set(
+    strike
+      ? -0.12
+      : recover
+        ? 0.06
+        : windup
+          ? 0.19 * tension
+          : alert
+            ? -0.09
+            : flee
+              ? -0.035
+              : Math.sin(time * 2) * 0.02,
+    flee
+      ? Math.sign(Math.sin(time * 0.8) || 1) * Math.max(0, Math.sin(time * 2.7)) ** 3 * 1.85
+      : alert
+        ? Math.sin(time * 1.2) * 0.2
+        : Math.sin(time * 0.8) * 0.06,
+    alert ? -0.08 : 0,
+  );
+  for (let i = 0; i < a.legs.length; i++)
+    a.legs[i].rotation.set(
+      windup
+        ? (i ? -1 : 1) * 0.08 * tension
+        : Math.sin(phase + i * Math.PI) * effort * (flee ? 0.65 : 0.32),
+      0,
+      0,
+    );
+  if (a.arms?.[0])
+    a.arms[0].rotation.set(
+      strike
+        ? 0.48
+        : recover
+          ? 0.16
+          : windup
+            ? -1.1 * tension
+            : Math.sin(phase + Math.PI) * effort * 0.48,
+      0,
+      alert ? -0.17 : 0,
+    );
+  if (a.arms?.[1])
+    a.arms[1].rotation.set(
+      strike ? 0.35 : recover ? 0.12 : windup ? -0.45 * tension : 0,
+      0,
+      flee ? Math.sin(phase) * 0.045 * effort : 0,
+    );
+  if (a.sack) {
+    a.sack.rotation.set(
+      flee ? Math.sin(phase) * 0.08 * effort : windup ? -0.12 * tension : 0,
+      0,
+      -0.24 + Math.sin(phase - 0.8) * (flee ? 0.15 : 0.055) * effort,
+    );
+  }
 }

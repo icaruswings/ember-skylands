@@ -12,7 +12,7 @@ with sync_playwright() as p:
  skins=page.evaluate("""async () => {
   const {createDragon}=await import('./game/assets.js');
   const dragon=createDragon(); let resolution=0,normalResolution=0;
-  dragon.traverse(o=>{if(o.isMesh && o.material.map?.image) resolution=Math.max(resolution,o.material.map.image.width * o.material.map.repeat.x);
+  dragon.traverse(o=>{if(o.isMesh && o.material.map?.image) resolution=Math.max(resolution,o.material.map.image.width);
    if(o.isMesh && o.material.normalMap?.image) normalResolution=Math.max(normalResolution,o.material.normalMap.image.width);
   });
   return {resolution,normalResolution};

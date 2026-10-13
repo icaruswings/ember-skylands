@@ -5,6 +5,7 @@ import { batchStatic } from '../engine/batching.js';
 import { createTree } from './trees.js';
 import { createGrass } from './grass.js';
 import { createChest, gemGeometry } from './treasure.js';
+import { createExplorationScenery } from './exploration-scenery.js';
 /** Scene construction is separate from gameplay. All assets are original procedural art. */
 export function createWorld(scene) {
   const root = new T.Group();
@@ -16,7 +17,7 @@ export function createWorld(scene) {
   grass.repeat.set(8, 8);
   stone.repeat.set(2, 2);
   wood.repeat.set(1, 4);
-  const stoneMat = mat(0xf0debd, { map: stone }),
+  const stoneMat = mat(0xefcbb9, { map: stone }),
     rockMat = mat(0x9a9478),
     pathMat = mat(0xe7d0a4, { map: stone }),
     woodMat = mat(0xe3bc86, { map: wood }),
@@ -73,6 +74,8 @@ export function createWorld(scene) {
   path(0, 3, 13, -7, 0, 3);
   path(0, 3, -14, -10, 0, 3);
   path(0, 3, 12, 1, 0, 2);
+  path(-5, 0, -7, -6, 0, 2);
+  createExplorationScenery(root, LEVEL, stoneMat, pathMat);
   for (const b of LEVEL.bridges) {
     const dx = b.bx - b.ax,
       dz = b.bz - b.az,
@@ -93,8 +96,8 @@ export function createWorld(scene) {
     }
     for (const s of [-1, 1]) {
       const line = new T.LineCurve3(
-        new T.Vector3(s * 1.9, 1.2, 0),
-        new T.Vector3(s * 1.9, b.by - b.ay + 1.2, len),
+        new T.Vector3(s * (b.width / 2 - 0.1), 1.2, 0),
+        new T.Vector3(s * (b.width / 2 - 0.1), b.by - b.ay + 1.2, len),
       );
       mesh(new T.TubeGeometry(line, 1, 0.07, 5, false), trunk, g);
     }
@@ -205,9 +208,15 @@ export function createWorld(scene) {
   ])
     tree(x, 0, z, s);
   for (const island of LEVEL.islands.slice(1))
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < (island.id === 'secret' ? 3 : 8); i++) {
       const a = i * 0.79;
-      tree(island.x + Math.sin(a) * 10, island.y, island.z + Math.cos(a) * 10, 0.7 + rand() * 0.35);
+      const radius = island.id === 'secret' ? 3.6 : 10;
+      tree(
+        island.x + Math.sin(a) * radius,
+        island.y,
+        island.z + Math.cos(a) * radius,
+        island.id === 'secret' ? 0.5 : 0.7 + rand() * 0.35,
+      );
     }
   const grassSystem = createGrass(root, LEVEL);
   // Small flowers use one instanced draw call and stay out of the main paths.
@@ -255,6 +264,14 @@ export function createWorld(scene) {
       0.8,
       0.25,
     );
+  const crystalMaterials = [0xb99bdb, 0x82c6ba].map((color) =>
+    mat(color, {
+      metalness: 0.25,
+      roughness: 0.25,
+      emissive: 0x2c5856,
+      emissiveIntensity: 0.1,
+    }),
+  );
   for (const land of LEVEL.islands)
     for (let i = 0; i < 7; i++) {
       const a = rand() * 6.28,
@@ -267,12 +284,7 @@ export function createWorld(scene) {
       for (let j = 0; j < 3; j++) {
         const crystal = mesh(
           new T.CylinderGeometry(0, 0.23, 0.9 + rand(), 5),
-          mat(land.id === 'crown' ? 0xb99bdb : 0x82c6ba, {
-            metalness: 0.25,
-            roughness: 0.25,
-            emissive: 0x2c5856,
-            emissiveIntensity: 0.1,
-          }),
+          crystalMaterials[land.id === 'crown' ? 0 : 1],
           g,
           (j - 1) * 0.3,
           0.5,

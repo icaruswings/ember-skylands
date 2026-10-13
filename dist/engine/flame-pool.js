@@ -17,7 +17,7 @@ export class FlamePool {
   get activeCount() {
     return this.life.reduce((count, life) => count + (life > 0 ? 1 : 0), 0);
   }
-  update(dt, player, breathing, quality = 'high') {
+  update(dt, player, breathing, quality = 'high', mouth) {
     dt = Math.min(Math.max(dt, 0), 0.1);
     for (let i = 0; i < this.max; i++) {
       if (this.life[i] <= 0) continue;
@@ -47,9 +47,9 @@ export class FlamePool {
         j = i * 3;
       const sideways = (this.random() - 0.5) * 1.8;
       const speed = 8 + this.random() * 4;
-      this.position[j] = player.x + sin * 1.64;
-      this.position[j + 1] = player.y + 1.21 + (this.random() - 0.5) * 0.12;
-      this.position[j + 2] = player.z + cos * 1.64;
+      this.position[j] = mouth?.x ?? player.x + sin * 1.64;
+      this.position[j + 1] = (mouth?.y ?? player.y + 1.21) + (this.random() - 0.5) * 0.12;
+      this.position[j + 2] = mouth?.z ?? player.z + cos * 1.64;
       this.velocity[j] = sin * speed + cos * sideways;
       this.velocity[j + 1] = 0.35 + this.random() * 1.5;
       this.velocity[j + 2] = cos * speed - sin * sideways;

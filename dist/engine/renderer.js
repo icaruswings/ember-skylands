@@ -1,12 +1,13 @@
 import * as T from '../assets/three.module.js';
 import { createWorld } from '../game/world.js';
-import { createDragon, animateDragon, mat, orb } from '../game/assets.js';
+import { createDragon, animateDragon, animateSentinel } from '../game/assets.js';
 import { Particles } from './particles.js';
 import { FireBreath } from './fire-breath.js';
 import { ChaseCamera } from './chase-camera.js';
 import { terrainHeight } from './simulation.js';
 import { ScorchMarks } from '../game/scorch.js';
 import { updateRescue } from '../game/rescue.js';
+import { createCompanion, updateCompanion } from '../game/companion.js';
 export class GameRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -66,24 +67,14 @@ export class GameRenderer {
     this.cameraDesired = new T.Vector3();
     this.rayDirection = new T.Vector3();
     this.dragon = createDragon(0.86);
+    this.mouthOrigin = new T.Vector3();
     this.scene.add(this.dragon);
     this.particles = new Particles(this.scene);
     this.fire = new FireBreath(this.scene);
-    this.companion = new T.Group();
-    orb(this.companion, mat(0xffd285, { emissive: 0xffad38, emissiveIntensity: 1 }), 0, 0, 0, 0.11);
-    for (const s of [-1, 1])
-      orb(
-        this.companion,
-        mat(0xeaffef, { transparent: true, opacity: 0.8 }),
-        s * 0.17,
-        0.04,
-        0,
-        0.18,
-        0.025,
-        0.1,
-      );
+    this.companion = createCompanion();
     this.scene.add(this.companion);
     this.angle = 0;
+    this.companion.userData.initialized = false;
     this.target = new T.Vector3(0, 1.5, 10);
     this.time = 0;
     this.quality = 'high';
@@ -98,6 +89,7 @@ export class GameRenderer {
   resetAdventure() {
     this.chase = new ChaseCamera();
     this.angle = 0;
+    this.companion.userData.initialized = false;
     this.world.grassSystem.field.burn.fill(0);
     for (const group of this.world.grassSystem.groups) {
       group.geometry.attributes.burn.array.fill(0);
@@ -131,7 +123,14 @@ export class GameRenderer {
     this.dragon.position.set(p.x, p.y + 0.07, p.z);
     this.dragon.rotation.y = playing ? p.angle : 0.5;
     this.dragon.visible = !(p.invincible > 0 && Math.floor(p.invincible * 10) % 2 === 0);
-    animateDragon(this.dragon, this.time, Math.hypot(p.vx, p.vz), p.gliding, p.charging);
+    animateDragon(
+      this.dragon,
+      playing ? sim.time : this.time,
+      Math.hypot(p.vx, p.vz),
+      p.gliding,
+      p.charging,
+      p,
+    );
     if (playing) {
       const c = this.chase.update(effectsActive ? dt : 0, p, orbit);
       this.angle = c.angle;
@@ -176,26 +175,30 @@ export class GameRenderer {
       m.visible = !sim.defeated.has(e.id);
       m.position.set(e.x, e.y + Math.abs(Math.sin(sim.time * (e.fleeing ? 11 : 4))) * 0.06, e.z);
       m.rotation.y = e.angle ?? 0;
-      const limbs = m.userData.legs || [];
-      limbs.forEach(
-        (leg, i) =>
-          (leg.rotation.x =
-            Math.sin(sim.time * (e.fleeing ? 13 : 5) + i * Math.PI) * (e.fleeing ? 0.5 : 0.18)),
-      );
-      if (m.userData.sack) m.userData.sack.rotation.z = Math.sin(sim.time * 8) * 0.08;
+      animateSentinel(m, sim.time, e.speed || 0, e.state || 'patrol');
     }
     this.world.grassSystem.update(dt, p, effectsActive, sim.time);
     this.scorch.update(dt, p, effectsActive, sim.level);
     this.world.portal.userData.glow.material.color.setHex(sim.unlocked ? 0x83f7cd : 0x5e7ea3);
     this.world.portal.userData.glow.material.opacity = 0.55 + Math.sin(this.time * 2) * 0.15;
     this.world.waterTex.offset.y -= dt * 0.18;
-    this.companion.position.set(
-      p.x + Math.cos(this.time * 2) * 1.2,
-      p.y + 1.9 + Math.sin(this.time * 4) * 0.18,
-      p.z + Math.sin(this.time * 2) * 1.2,
+    updateCompanion(
+      this.companion,
+      p,
+      effectsActive || !playing ? dt : 0,
+      playing ? sim.time : this.time,
     );
-    this.companion.children[0].material.color.setHex([0xffd285, 0x97dbef, 0x8be9a1][3 - p.health]);
-    this.fire.update(dt, p, effectsActive, this.time, this.quality, this.canvas.height);
+    this.dragon.updateMatrixWorld(true);
+    this.dragon.userData.mouth.getWorldPosition(this.mouthOrigin);
+    this.fire.update(
+      dt,
+      p,
+      effectsActive,
+      this.time,
+      this.quality,
+      this.canvas.height,
+      this.mouthOrigin,
+    );
     this.particles.update(dt);
     this.renderer.render(this.scene, this.camera);
   }

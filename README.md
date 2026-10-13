@@ -2,7 +2,7 @@
 
 [Play on Sites](https://ember-skylands.icaruswings138.chatgpt.site) · [Public source](https://github.com/icaruswings/ember-skylands)
 
-A small browser dragon collectathon with a classic purple dragon and artist-built Gnorcs. Run, charge, breathe fire, jump and glide across three connected garden realms. Approach emerald dragon statues to free friends and watch them dance. Collect 30 gems to open the castle portal; explore for all 78 gems, six chests and six Gnorcs. The camera follows from behind at dragon height.
+A small browser dragon collectathon with a classic purple dragon and artist-built Gnorcs. Run, charge, breathe fire, jump and glide across three connected garden realms and a secret glide garden. Approach emerald dragon statues to free friends and watch them dance. Collect 30 gems to open the castle portal; explore for all 94 gems, seven chests and six Gnorcs. The camera follows from behind at dragon height. Climb the west watchtower, leap and glide into the Hidden Garden, then take the return bridge back.
 
 Built in JavaScript using Three.js 0.180.0 for rendering. The application engine supplies deterministic physics, collisions, input, animated procedural models, pooled particles, event-driven scripts, gesture-gated synthesized music/effects and local saves. No server, external fonts, asset CDN, tracking or sign-in is required by the game itself. Sites hosting controls access to the published site.
 
@@ -30,13 +30,17 @@ Open http://localhost:4173. To deploy elsewhere, serve `dist/` as a static direc
 | Map              | M             | Map button               | —                |
 | Pause            | Escape        | Pause button             | —                |
 
-Armored Gnorcs require a charge; large Gnorcs require flame. Thieves flee with shoulder sacks. Red gems lie in the grass; green gems emerge from defeated enemies and chests broken with flame or charge. Nearby gems pull toward the dragon. Rescues happen automatically, restore health and set your fall-recovery checkpoint. Fire shortens nearby grass and darkens its tips. Progress saves on this device, including collected gems, dragon friends, broken chests and defeated enemies; player position resets to the garden when reopening the game. Use Settings to reset it.
+Armored Gnorcs require a charge; large Gnorcs require flame. Thieves flee with shoulder sacks and glance over their shoulders. Giants raise an arm before striking, giving you time to flame them or retreat. Red gems lie in the grass; green gems emerge from defeated enemies and chests broken with flame or charge. Nearby gems pull toward the dragon. Rescues happen automatically, restore health and set your fall-recovery checkpoint. Fire shortens nearby grass and darkens its tips. The dragonfly follows smoothly and changes color with health. Blinking, breathing, galloping, charging, jumping and gliding use independently animated joints. Progress saves on this device, including collected gems, dragon friends, broken chests and defeated enemies; player position resets to the garden when reopening the game. Use Settings to reset it.
 
 Phones fill the viewport from the title screen. Tapping Play also requests native fullscreen where the browser supports it; unsupported or denied requests keep the same immersive layout. Settings are available on the title screen and through Pause. Game text cannot be selected, and controls suppress long-press menus. Safe-area spacing keeps controls clear of phone cutouts.
 
 ## Maintain
 
 - `dist/engine/simulation.js`: deterministic rendering-independent physics, gameplay state and safe script predicates.
+- `dist/engine/terrain.js`: overlapping floors, raised terraces, ramps and height-aware obstacles.
+- `dist/engine/enemy-ai.js`: terrain-safe patrols, fleeing and giant attack phases.
+- `dist/game/companion.js`: animated dragonfly and health colors.
+- `dist/game/exploration-scenery.js`: watchtower, staircase landing and hidden garden scenery.
 - `dist/engine/input.js`: unified keyboard, multi-touch and gamepad inputs with queued taps.
 - `dist/engine/display.js`: gesture-gated fullscreen and game selection/context-menu protection.
 - `dist/engine/renderer.js`: scene lighting and visual state adapter; chase-camera.js handles the low trailing view.
@@ -78,6 +82,7 @@ python tests/browser_progress.py
 python tests/browser_fire.py
 python tests/browser_assets.py
 python tests/browser_classic.py
+python tests/browser_next.py
 ```
 
 Browser tests use `/usr/bin/chromium` and software WebGL in headless mode. They test real input and rendered scenes. The final portal test restores a legal objective save before moving to the portal; the separate simulation adventure test reaches the objectives by moving through every bridge. See `docs/verification.md` for actual results and remaining physical-device limits.

@@ -4,6 +4,15 @@ import { FlamePool } from '../dist/engine/flame-pool.js';
 import { FireBreath } from '../dist/engine/fire-breath.js';
 import { Scene } from '../dist/assets/three.module.js';
 const player = { x: 4, y: 2, z: 8, angle: 0 };
+test('fire and embers attach to the animated model mouth position', () => {
+  const fire = new FireBreath(new Scene());
+  const mouth = { x: 9, y: 4, z: 3 };
+  fire.update(0.05, { ...player, flame: 0.3 }, true, 0, 'low', 720, mouth);
+  assert.deepEqual(fire.root.position.toArray(), [9, 4, 3]);
+  assert.ok(Math.abs(fire.pool.position[0] - 9) < 0.001);
+  assert.ok(Math.abs(fire.pool.position[1] - 4) < 0.061);
+  assert.ok(Math.abs(fire.pool.position[2] - 3) < 0.001);
+});
 test('pausing an attack extinguishes the plume and lets its existing embers expire', () => {
   const fire = new FireBreath(new Scene());
   const attacking = { ...player, flame: 0.3 };

@@ -32,7 +32,16 @@ export async function loadArtTextures() {
     const tex = new T.CanvasTexture(canvas);
     textures.set(kind, tex);
   }
-  textures.set('scales', scales);
+  // Keep hand-painted scales as fine surface detail rather than oversized plates.
+  const soft = document.createElement('canvas');
+  soft.width = scales.image.width;
+  soft.height = scales.image.height;
+  const softContext = soft.getContext('2d');
+  softContext.drawImage(scales.image, 0, 0);
+  softContext.fillStyle = 'rgba(241,235,220,.52)';
+  softContext.fillRect(0, 0, soft.width, soft.height);
+  textures.set('scales', new T.CanvasTexture(soft));
+  scales.dispose();
   textures.set('bark', bark);
   textures.set('armor', armorTexture());
   textures.set('cloth', clothTexture());
@@ -43,7 +52,16 @@ export async function loadArtTextures() {
     tex.anisotropy = 4;
     tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
   }
-  for (const [kind, tex] of textures) normals.set(kind, reliefNormals(tex.image));
+  const detail = textures.get('scales');
+  detail.wrapS = detail.wrapT = T.RepeatWrapping;
+  detail.repeat.set(3, 3);
+  for (const [kind, tex] of textures) {
+    const normal = reliefNormals(tex.image);
+    normal.wrapS = tex.wrapS;
+    normal.wrapT = tex.wrapT;
+    normal.repeat.copy(tex.repeat);
+    normals.set(kind, normal);
+  }
   atlas.dispose();
   materials.clear();
 }
@@ -187,7 +205,10 @@ export function surface(kind, color = 0xffffff) {
         color,
         map: map ?? null,
         normalMap: normals.get(kind) ?? null,
-        normalScale: new T.Vector2(kind === 'skin' ? 0.18 : 0.6, kind === 'skin' ? 0.18 : 0.6),
+        normalScale: new T.Vector2(
+          kind === 'skin' || kind === 'scales' ? 0.18 : 0.6,
+          kind === 'skin' || kind === 'scales' ? 0.18 : 0.6,
+        ),
         roughness: kind === 'scales' ? 0.67 : kind === 'armor' ? 0.6 : 0.9,
         metalness: kind === 'armor' ? 0.3 : 0,
         emissive: kind === 'foliage' ? 0x5f7937 : 0x000000,

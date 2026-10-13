@@ -134,12 +134,13 @@ export class FireBreath {
     this.light = new T.PointLight(0xff8d24, 0, 6, 2);
     scene.add(this.light);
   }
-  update(dt, player, active, time, quality, viewportHeight) {
+  update(dt, player, active, time, quality, viewportHeight, mouth) {
     const breathing = active && player.flame > 0.01;
-    this.pool.update(dt, player, breathing, quality);
+    this.pool.update(dt, player, breathing, quality, mouth);
     const sin = Math.sin(player.angle),
       cos = Math.cos(player.angle);
-    this.root.position.set(player.x + sin * 1.61, player.y + 1.21, player.z + cos * 1.61);
+    if (mouth) this.root.position.copy(mouth);
+    else this.root.position.set(player.x + sin * 1.61, player.y + 1.21, player.z + cos * 1.61);
     this.root.rotation.y = player.angle;
     this.root.visible = breathing;
     const elapsed = 0.42 - player.flame;

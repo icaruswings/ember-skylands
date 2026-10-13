@@ -1,6 +1,6 @@
 # Ember: A Skylands Adventure
 
-The classic gameplay pass in `classic-gameplay-plan.md` supersedes the original teal/golem art direction below. The current game has a purple dragon, organic Gnorcs, GLB models, 78 red/green gems, chests, automatic emerald-statue rescues, a low trailing camera and burnable grass. This document retains the initial architecture rationale.
+The character/exploration pass in `next-upgrade-plan.md` adds the watchtower, hidden glide garden, 94 gems, expressive rigs and giant attack tells. The classic gameplay pass in `classic-gameplay-plan.md` supersedes the original teal/golem art direction below. The current game has a purple dragon, organic Gnorcs, GLB models, 78 red/green gems, chests, automatic emerald-statue rescues, a low trailing camera and burnable grass. This document retains the initial architecture rationale.
 
 An original dragon collectathon for mobile and desktop browsers. Inspired by the original Spyro's exploration and movement, with original characters, geometry, layout, textures and music.
 

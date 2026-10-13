@@ -27,6 +27,7 @@ test('authored GLB files parse through the standard Three.js glTF loader', async
         : root.getObjectByName(names);
     if (name === 'dragon') {
       assert.ok(root.userData.head);
+      assert.ok(root.userData.mouth, 'loaded rig must retain the flame attachment');
       assert.equal(root.userData.legs.length, 4);
       animateDragon(root, 2, 7, true, false);
       assert.ok(root.userData.wings.every((w) => Number.isFinite(w.rotation.z)));

@@ -1,17 +1,7 @@
 /** Rendering-independent 60 Hz simulation. No DOM, GPU, or audio dependencies. */
-export function terrainHeight(level, x, z) {
-  let height = null;
-  for (const p of level.islands)
-    if (Math.hypot(x - p.x, z - p.z) <= p.r) height = Math.max(height ?? -Infinity, p.y);
-  for (const b of level.bridges) {
-    const dx = b.bx - b.ax,
-      dz = b.bz - b.az,
-      t = ((x - b.ax) * dx + (z - b.az) * dz) / (dx * dx + dz * dz);
-    if (t >= 0 && t <= 1 && Math.hypot(x - b.ax - t * dx, z - b.az - t * dz) < b.width / 2)
-      height = Math.max(height ?? -Infinity, b.ay + t * (b.by - b.ay));
-  }
-  return height;
-}
+import { terrainHeight, obstacleBlocks } from './terrain.js';
+import { updateEnemy } from './enemy-ai.js';
+export { terrainHeight } from './terrain.js';
 export function validSave(raw, level) {
   const empty = { gems: [], rescues: [], enemies: [], chests: [], complete: false };
   if (!raw || raw.version !== 1) return empty;
@@ -164,7 +154,7 @@ export class Simulation {
     let nx = p.x + p.vx * dt,
       nz = p.z + p.vz * dt;
     for (const o of this.level.obstacles) {
-      if (p.y > 3) continue;
+      if (!obstacleBlocks(o, p.y)) continue;
       if (o.r) {
         const d = Math.hypot(nx - o.x, nz - o.z),
           r = o.r + 0.55;
@@ -194,9 +184,10 @@ export class Simulation {
         nz = c.z + (d ? dz / d : Math.cos(p.angle + Math.PI)) * radius;
       }
     }
-    const floor = terrainHeight(this.level, nx, nz);
-    const old = terrainHeight(this.level, p.x, p.z);
-    if (p.grounded && floor !== null && old !== null && floor - old < 0.65) {
+    const ceiling = p.y + (p.grounded ? 0.65 : 0.01);
+    const floor = terrainHeight(this.level, nx, nz, ceiling);
+    const old = terrainHeight(this.level, p.x, p.z, ceiling);
+    if (p.grounded && floor !== null && old !== null && Math.abs(floor - old) < 0.65) {
       p.y = floor;
       p.vy = 0;
     } else {
@@ -243,54 +234,15 @@ export class Simulation {
     }
     for (const e of this.enemies) {
       if (this.defeated.has(e.id)) continue;
-      e.phase += dt;
-      const distance = Math.hypot(p.x - e.x, p.z - e.z);
-      const previousX = e.x,
-        previousZ = e.z;
-      e.fleeing = e.behavior === 'flee' && distance < 9 && Math.abs(p.y - e.y) < 2;
-      if (distance < (e.fleeing ? 9 : 7) && Math.abs(p.y - e.y) < 2) {
-        const chase = e.fleeing ? -4.2 : e.type === 'giant' ? 1.2 : 1.8;
-        if (distance > 1.2) {
-          e.x += ((p.x - e.x) / distance) * dt * chase;
-          e.z += ((p.z - e.z) / distance) * dt * chase;
-        }
-      } else {
-        const dx = e.homeX + Math.sin(e.phase) * 1.1 - e.x,
-          dz = e.homeZ + Math.cos(e.phase) * 0.8 - e.z,
-          distance = Math.hypot(dx, dz),
-          fraction = distance ? Math.min(1, (dt * 1.8) / distance) : 0;
-        e.x += dx * fraction;
-        e.z += dz * fraction;
-      }
-      // Never let a thief or patrol walk off an island or through solid scenery.
-      const safe = (x, z) => {
-        const h = terrainHeight(this.level, x, z);
-        return (
-          h !== null &&
-          Math.abs(h - e.y) < 0.7 &&
-          !this.level.obstacles.some((o) =>
-            o.r
-              ? Math.hypot(x - o.x, z - o.z) < o.r + 0.6
-              : Math.abs(x - o.x) < o.halfX + 0.6 && Math.abs(z - o.z) < o.halfZ + 0.6,
-          )
-        );
-      };
-      if (!safe(e.x, e.z)) {
-        const turn = e.phase % 4 < 2 ? 1 : -1;
-        const dx = e.x - previousX,
-          dz = e.z - previousZ;
-        e.x = previousX - dz * turn;
-        e.z = previousZ + dx * turn;
-        if (!safe(e.x, e.z)) {
-          e.x = previousX;
-          e.z = previousZ;
-        }
-      }
-      e.angle = Math.atan2(e.x - previousX, e.z - previousZ);
+      const striking = updateEnemy(e, p, dt, this.level);
       const d = Math.hypot(p.x - e.x, p.z - e.z);
       if (p.charging && d < 1.8 && Math.abs(p.y - e.y) < 2) this.hitEnemy(e.id, 'charge');
       if (p.flame > 0 && this.inAttackRange(e, 4.5, 2.5)) this.hitEnemy(e.id, 'flame');
-      if (!this.defeated.has(e.id) && d < 1.1 && Math.abs(p.y - e.y) < 1.6) this.damage();
+      if (
+        !this.defeated.has(e.id) &&
+        (e.type === 'giant' ? striking : d < 1.1 && Math.abs(p.y - e.y) < 1.6)
+      )
+        this.damage();
     }
     this.rescueNearby();
     if (input.interactPressed || (input.interact && !this.interactHeld)) this.interact();

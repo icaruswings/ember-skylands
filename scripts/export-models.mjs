@@ -112,7 +112,18 @@ export function encodeModel(root) {
     json.nodes.push(node);
   }
   const rig = {};
-  for (const key of ['torso', 'head', 'tail', 'legs', 'wings', 'sack']) {
+  for (const key of [
+    'torso',
+    'head',
+    'tail',
+    'legs',
+    'wings',
+    'sack',
+    'jaw',
+    'eyes',
+    'arms',
+    'mouth',
+  ]) {
     const value = root.userData[key];
     if (Array.isArray(value)) rig[key] = value.map((o) => json.nodes[nodes.get(o)].name);
     else if (value) rig[key] = json.nodes[nodes.get(value)].name;

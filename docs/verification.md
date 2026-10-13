@@ -1,3 +1,12 @@
+# Current upgrade validation — 2026-10-13
+
+- 76 behavior cases across 15 isolated Node files pass, plus application syntax checks. New coverage includes route traversal from the normal spawn, raised-floor landing, giant windup/interruption/recovery, articulated character poses/blinking/shoulder glances, actual-mouth fire attachment, companion following/health/pause, and distance-based grass detail.
+- Independent review found no blocking defects. All original treasure/enemy/chest/rescue records and v1 complete saves remain intact. Original bridge routes still reach all three rescues. The four GLBs match their authored exports, clone independently and stay within geometry budgets.
+- Model close-ups and a desktop treasure/fire/save flow passed before final rendering optimizations. The first phone budget check exceeded its draw-call limit; duplicated crystal materials were consolidated and distant grass detail reduced. A touch ascent overshot the tight corner landing; the landing is wider now. Final browser checks remain pending after the preview environment restart.
+- Blocker: the current sandbox denies localhost server sockets and Chromium sockets. The required network-permission request was canceled. The final browser rerun, GitHub push and Sites publication have not completed. This upgrade is saved locally; the published game remains the previous release. Resume the browser scripts with socket/network permission before publishing.
+
+The release record below describes the previously published version.
+
 # Verification record
 
 Date: 2026-10-11.

@@ -37,7 +37,7 @@ with sync_playwright() as p:
         page.wait_for_function("JSON.parse(localStorage.getItem('ember-skylands-save-v1')).gems.some(g=>g.startsWith('chest-0-gem'))",timeout=30000)
         state=page.evaluate('ember.snapshot()')
         assert state['mode']=='playing';assert state['camera']['y']<3.5
-        assert state['drawCalls']<330;assert state['triangles']<245000
+        assert state['drawCalls']<330, state;assert state['triangles']<245000, state
         page.screenshot(path=f'docs/classic-{"phone" if phone else "desktop"}.png')
         before=state['singedGrass'];page.locator('#pause-button').click()
         page.wait_for_timeout(400)

@@ -43,6 +43,7 @@ export function createGrass(root, level) {
   base.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
   base.computeVertexNormals();
   const uniforms = { time: { value: 0 } };
+  let quality = 'high';
   const material = new T.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 1,
@@ -88,7 +89,7 @@ export function createGrass(root, level) {
       return Math.hypot(x - ax - t * dx, z - az - t * dz) < w;
     });
   for (const land of level.islands) {
-    const count = land.id === 'meadow' ? 3000 : 1300,
+    const count = land.tuftCount ?? (land.id === 'meadow' ? 3000 : 1300),
       geometry = base.clone(),
       burn = new Float32Array(count);
     geometry.setAttribute('burn', new T.InstancedBufferAttribute(burn, 1));
@@ -96,6 +97,7 @@ export function createGrass(root, level) {
     m.receiveShadow = true;
     m.castShadow = false;
     root.add(m);
+    m.userData.land = { x: land.x, z: land.z };
     groups.push(m);
     for (let i = 0; i < count; i++) {
       let x,
@@ -135,12 +137,19 @@ export function createGrass(root, level) {
   return {
     field,
     groups,
-    setQuality(quality) {
+    setQuality(value) {
+      quality = value;
       for (const g of groups)
         g.count =
           quality === 'low' ? Math.floor(g.instanceMatrix.count * 0.55) : g.instanceMatrix.count;
     },
     update(dt, p, active, time) {
+      if (quality === 'low')
+        for (const g of groups) {
+          const d = Math.hypot(p.x - g.userData.land.x, p.z - g.userData.land.z);
+          const fraction = 0.55 - 0.3 * Math.min(1, Math.max(0, (d - 18) / 18));
+          g.count = Math.floor(g.instanceMatrix.count * fraction);
+        }
       if (!active) return;
       uniforms.time.value = time;
       if (p.flame <= 0) return;

@@ -5,7 +5,7 @@ import {
   createSentinel as proceduralSentinel,
 } from './characters.js';
 import { cloneModel } from '../engine/models.js';
-export { animateDragon } from './characters.js';
+export { animateDragon, animateSentinel } from './characters.js';
 export function createDragon(scale = 1, color) {
   return cloneModel('dragon', scale, color) || proceduralDragon(scale, color);
 }

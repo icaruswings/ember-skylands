@@ -95,7 +95,7 @@ function closeDialog() {
 }
 function guide() {
   openDialog(
-    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The dragon kingdom has lost its light. Free Sol, Fern and Luma from their emerald statues, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored Gnorcs need a charge; large ones need flame. Flame or charge wooden chests for green treasure.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Walk close to a stone dragon and watch them break free and dance. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Hollow and Dragon Heights. Red gems pull toward you. Chase the sack-carrying Gnorcs for green gems. If you fall, you return safely to your last checkpoint. Gamepad: A jump, X flame, B charge, Y portal.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The dragon kingdom has lost its light. Free Sol, Fern and Luma from their emerald statues, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored Gnorcs need a charge; large ones need flame. When a giant raises its arm, flame it or step back before it strikes. Flame or charge wooden chests for green treasure.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Walk close to a stone dragon and watch them break free and dance. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Hollow and Dragon Heights. Follow the red gems up the west watchtower, jump and glide into the Hidden Garden, then tap Jump again to fold your wings and land. Your dragonfly changes from gold to blue to green as health drops. Red gems pull toward you. Chase the sack-carrying Gnorcs for green gems. If you fall, you return safely to your last checkpoint. Gamepad: A jump, X flame, B charge, Y portal.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
   );
   $('guide-done').onclick = closeDialog;
 }
@@ -165,7 +165,7 @@ function drawMap(canvas, big = false) {
   const pos = (x, z) => [ox + x * scale, oy + z * scale * 0.83];
   c.strokeStyle = '#bfa575';
   c.lineWidth = big ? 9 : 4;
-  for (const b of LEVEL.bridges) {
+  for (const b of [...LEVEL.bridges, ...LEVEL.ramps]) {
     c.beginPath();
     c.moveTo(...pos(b.ax, b.az));
     c.lineTo(...pos(b.bx, b.bz));
@@ -223,8 +223,16 @@ function drawMap(canvas, big = false) {
   c.restore();
 }
 function map() {
+  const status = (island) => {
+    const rescue = LEVEL.rescues.find((r) => r.zone === island.name);
+    return rescue
+      ? sim.rescued.has(rescue.id)
+        ? 'Dragon freed'
+        : 'Find ' + rescue.name
+      : 'Watchtower glide route';
+  };
   openDialog(
-    `<span class="dialog-eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="dialog-title">The Skylands.</h2><canvas id="big-map" class="big-map" width="600" height="340" aria-label="Map of three islands and your position"></canvas>${LEVEL.islands.map((island, i) => `<div class="realm-row"><strong>${island.name}</strong><span>${LEVEL.gems.filter((g) => g.zone === island.id && sim.collected.has(g.id)).length} / ${LEVEL.gems.filter((g) => g.zone === island.id).length} gems</span><em>${sim.rescued.has(LEVEL.rescues[i].id) ? 'Spirit freed' : 'Find ' + LEVEL.rescues[i].name}</em></div>`).join('')}<p>Purple arrow: you · emerald dots: dragon friends · red/green dots: gems · square: home portal</p><button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="dialog-title">The Skylands.</h2><canvas id="big-map" class="big-map" width="600" height="340" aria-label="Map of the realms, hidden garden and your position"></canvas>${LEVEL.islands.map((island) => `<div class="realm-row"><strong>${island.name}</strong><span>${LEVEL.gems.filter((g) => g.zone === island.id && sim.collected.has(g.id)).length} / ${LEVEL.gems.filter((g) => g.zone === island.id).length} gems</span><em>${status(island)}</em></div>`).join('')}<p>Purple arrow: you · emerald dots: dragon friends · red/green dots: gems · square: home portal</p><button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
   );
   drawMap($('big-map'), true);
   $('map-done').onclick = closeDialog;
@@ -259,7 +267,13 @@ function updateHUD() {
   $('health').setAttribute('aria-label', `${p.health} health`);
   [...$('health').children].forEach((e, i) => e.classList.toggle('lost', i >= p.health));
   const island = LEVEL.islands.find((i) => Math.hypot(p.x - i.x, p.z - i.z) < i.r);
-  if (island) $('zone-name').textContent = island.name;
+  if (island) {
+    $('zone-name').textContent = island.name;
+    document.querySelector('.zone-tag').textContent =
+      island.id === 'secret'
+        ? 'SECRET GARDEN'
+        : `REALM ${String(LEVEL.islands.indexOf(island) + 1).padStart(2, '0')}`;
+  }
   $('quest-progress').style.width =
     `${Math.min(100, (Math.min(sim.collected.size, 30) / 30 + sim.rescued.size / 3) * 50)}%`;
   $('quest-title').textContent = sim.complete
@@ -382,6 +396,15 @@ try {
   window.ember = Object.freeze({
     snapshot: () => ({
       mode,
+      adventureTime: sim.time,
+      dragonPose: {
+        jaw: render.dragon.userData.jaw?.rotation.x,
+        blink: render.dragon.userData.eyes?.[0].scale.y,
+        head: render.dragon.userData.head.rotation.x,
+      },
+      enemyStates: sim.enemies
+        .filter((e) => !sim.defeated.has(e.id))
+        .map((e) => ({ id: e.id, state: e.state, timer: e.timer })),
       fireActive: render.fire.root.visible,
       fireParticles: render.fire.pool.activeCount,
       player: { ...sim.player },
