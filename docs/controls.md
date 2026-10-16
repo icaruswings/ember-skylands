@@ -23,3 +23,13 @@ Standard gamepad layout: cross/A jumps, square/X charges, circle/B breathes fire
 ## Verification
 
 Regression coverage includes touch anchoring and jitter, pointer ownership, live camera-relative corrections, radial gamepad response, button mapping, bounded turns, braking distance, neutral-stick charge, recentering, camera framing, and an analogue ascent of both watchtower ramps. The existing movement-driven full adventure and hidden-garden glide route remain required checks. Browser checks exercise real Chromium touch events, the ramp route, multitouch, recenter controls, pause, and portrait/landscape layouts.
+
+### Verified on 16 October 2026
+
+- `npm test`: all 16 isolated test files pass, including the movement-driven full adventure and new steering regressions. JavaScript syntax checks and `git diff --check` pass.
+- `browser_mobile.py`: portrait/landscape, immersive viewport, fullscreen and rejected/missing-fullscreen fallbacks, no text selection, multitouch, charge, jump/glide, pause/settings/map, and the 44-pixel camera button pass.
+- `browser_next.py`: real touch input starts neutral off-centre, ignores jitter, ascends both watchtower ramps, recenters on the landing, pauses the rig, jumps/glides into the Hidden Garden, opens its chest, shows four realms, reloads saved progress, and interrupts a giant’s windup with flame.
+- `browser_classic.py`: desktop and phone treasure/fire/save, automatic rescue, charging an armored enemy, steady sideways camera, and keyboard recenter pass. Render budgets remain within the existing limits.
+- Independent review reproduced and fixed the held-diagonal feedback loop. A 20-second run now travels 139.57 units with 139.57 units displacement and zero camera yaw drift.
+
+Browser verification uses Chromium with software WebGL and emulated touch devices. Physical iPhone/Safari testing was not available in this environment.
