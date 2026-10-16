@@ -95,7 +95,7 @@ function closeDialog() {
 }
 function guide() {
   openDialog(
-    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The dragon kingdom has lost its light. Free Sol, Fern and Luma from their emerald statues, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored Gnorcs need a charge; large ones need flame. When a giant raises its arm, flame it or step back before it strikes. Flame or charge wooden chests for green treasure.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Walk close to a stone dragon and watch them break free and dance. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Hollow and Dragon Heights. Follow the red gems up the west watchtower, jump and glide into the Hidden Garden, then tap Jump again to fold your wings and land. Your dragonfly changes from gold to blue to green as health drops. Red gems pull toward you. Chase the sack-carrying Gnorcs for green gems. If you fall, you return safely to your last checkpoint. Gamepad: A jump, X flame, B charge, Y portal.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The dragon kingdom has lost its light. Free Sol, Fern and Luma from their emerald statues, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around; press C or the camera button to look behind Ember. Small thumb movements walk slowly.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored Gnorcs need a charge; large ones need flame. When a giant raises its arm, flame it or step back before it strikes. Flame or charge wooden chests for green treasure.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Walk close to a stone dragon and watch them break free and dance. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Hollow and Dragon Heights. Follow the red gems up the west watchtower, jump and glide into the Hidden Garden, then tap Jump again to fold your wings and land. Your dragonfly changes from gold to blue to green as health drops. Red gems pull toward you. Chase the sack-carrying Gnorcs for green gems. If you fall, you return safely to your last checkpoint. Gamepad: A / ✕ jump, X / □ charge, B / ○ flame, Y / △ portal. R3 recenters the camera; L2 / R2 rotate it.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
   );
   $('guide-done').onclick = closeDialog;
 }
@@ -384,7 +384,16 @@ try {
     }
     const orbit = input.orbit;
     input.orbit = 0;
-    render.update(dt, sim, mode !== 'intro', mode === 'playing' ? orbit : 0, mode === 'playing');
+    const recenter = input.recenter;
+    input.recenter = false;
+    render.update(
+      dt,
+      sim,
+      mode !== 'intro',
+      mode === 'playing' ? orbit : 0,
+      mode === 'playing',
+      mode === 'playing' && recenter,
+    );
     hudTime += dt;
     if (hudTime > 0.12) {
       updateHUD();

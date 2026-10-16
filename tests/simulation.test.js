@@ -147,7 +147,13 @@ test('complete adventure is reachable by moving through bridges without teleport
         dz = z - s.player.z,
         d = Math.hypot(dx, dz);
       if (d < 0.4) return;
-      s.update(1 / 60, { x: dx / d, z: dz / d, flame: n % 28 === 0, charge: true });
+      // Release charge for close pickups and sharp corners, as a player would.
+      s.update(1 / 60, {
+        x: dx / d,
+        z: dz / d,
+        flame: n % 28 === 0,
+        charge: d > 5 && Math.cos(Math.atan2(dx, dz) - s.player.angle) > 0.95,
+      });
     }
     assert.fail(`Cannot reach ${x},${z}; player at ${s.player.x},${s.player.z}`);
   };

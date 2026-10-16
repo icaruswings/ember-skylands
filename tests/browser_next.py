@@ -23,13 +23,17 @@ with sync_playwright() as p:
     browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader'])
     context,page,errors=open_game(browser,(-7,-6,0),True)
     cdp=context.new_cdp_session(page)
-    def touch(kind,points):cdp.send('Input.dispatchTouchEvent',{'type':kind,'touchPoints':points})
+    touch_state={'active':False}
+    def touch(kind,points):
+        if kind in ['touchEnd','touchCancel'] and not touch_state['active']:return
+        cdp.send('Input.dispatchTouchEvent',{'type':kind,'touchPoints':points})
+        touch_state['active']=bool(points)
     def move_start(dx,dz):
         r=page.locator('#joystick').bounding_box();cx=r['x']+r['width']/2;cy=r['y']+r['height']/2
         angle=page.evaluate('ember.snapshot().camera.angle');cs=math.cos(angle);sn=math.sin(angle)
         d=math.hypot(dx,dz);x=(dx*cs-dz*sn)/d;z=(dz*cs+dx*sn)/d
-        point={'x':cx+x*r['width']*.135,'y':cy+z*r['width']*.135,'id':1}
-        touch('touchStart',[point]);return point
+        point={'x':cx+x*r['width']*.22,'y':cy+z*r['width']*.22,'id':1}
+        touch('touchStart',[{'x':cx,'y':cy,'id':1}]);touch('touchMove',[point]);return point
     def stop():touch('touchEnd',[])
     def walk(x,z):
         for attempt in range(8):
@@ -41,7 +45,17 @@ with sync_playwright() as p:
             page.wait_for_function('(a)=>{const p=ember.snapshot().player;return (p.x-a.x)*a.dx+(p.z-a.z)*a.dz>a.distance}',arg={'x':state['x'],'z':state['z'],'dx':dx/d,'dz':dz/d,'distance':max(.1,d-.5)},timeout=60000)
             stop();page.wait_for_function('ember.snapshot().player.vx===0 && ember.snapshot().player.vz===0')
         raise AssertionError('Touch route could not reach '+str((x,z))+': '+str(page.evaluate('ember.snapshot().player')))
-    walk(-13,-6);walk(-13,-3);walk(-15,-1);walk(-17,1)
+    # Landing off-centre and tiny jitter must not move the dragon.
+    r=page.locator('#joystick').bounding_box();cx=r['x']+r['width']*.68;cy=r['y']+r['height']*.55
+    before=page.evaluate('ember.snapshot().player')
+    touch('touchStart',[{'x':cx,'y':cy,'id':1}]);touch('touchMove',[{'x':cx+2,'y':cy+1,'id':1}])
+    page.wait_for_timeout(350)
+    after=page.evaluate('ember.snapshot().player');assert math.hypot(after['x']-before['x'],after['z']-before['z'])<.01
+    stop()
+    walk(-13,-6)
+    page.locator('[data-action="recenter"]').tap()
+    page.wait_for_function('(()=>{const s=ember.snapshot();return Math.abs(Math.atan2(Math.sin(s.camera.angle-s.player.angle-Math.PI),Math.cos(s.camera.angle-s.player.angle-Math.PI)))<.04})()')
+    walk(-13,-3);walk(-15,-1);walk(-17,1)
     assert page.evaluate('ember.snapshot().player.y')>5.5
     page.locator('#pause-button').tap();page.locator('#resume-button').wait_for(state='visible')
     frozen=page.evaluate('({time:ember.snapshot().adventureTime,pose:ember.snapshot().dragonPose})')
@@ -60,6 +74,7 @@ with sync_playwright() as p:
     page.locator('[data-action="jump"]').tap();page.wait_for_function('ember.snapshot().player.gliding')
     page.wait_for_function('ember.snapshot().player.x < -27',timeout=60000)
     stop();page.locator('[data-action="jump"]').tap()
+    print('TOUCH GLIDE FOLDED',json.dumps(page.evaluate('ember.snapshot().player')),flush=True)
     page.wait_for_function('ember.snapshot().player.grounded && Math.abs(ember.snapshot().player.y-1)<.01',timeout=60000)
     assert page.evaluate('Math.hypot(ember.snapshot().player.x+30,ember.snapshot().player.z-7)<5.5')
     walk(-32,8)

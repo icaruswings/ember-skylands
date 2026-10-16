@@ -19,16 +19,19 @@ Open http://localhost:4173. To deploy elsewhere, serve `dist/` as a static direc
 
 ## Play
 
-| Action           | Keyboard      | Touch                    | Standard gamepad |
-| ---------------- | ------------- | ------------------------ | ---------------- |
-| Move             | WASD / arrows | Left joystick            | Left stick       |
-| Jump, then glide | Space twice   | Jump twice               | A twice          |
-| Charge           | Hold Shift    | Hold Charge              | Hold B           |
-| Breathe fire     | F             | Flame                    | X                |
-| Enter portal     | E near portal | Contextual Portal button | Y                |
-| Look             | Drag scenery  | Drag scenery             | Right stick      |
-| Map              | M             | Map button               | —                |
-| Pause            | Escape        | Pause button             | —                |
+| Action           | Keyboard      | Touch                    | Standard gamepad      |
+| ---------------- | ------------- | ------------------------ | --------------------- |
+| Move             | WASD / arrows | Left joystick            | Left stick            |
+| Jump, then glide | Space twice   | Jump twice               | A / ✕ twice           |
+| Charge           | Hold Shift    | Hold Charge              | Hold X / □            |
+| Breathe fire     | F             | Flame                    | B / ○                 |
+| Enter portal     | E near portal | Contextual Portal button | Y / △                 |
+| Look             | Drag scenery  | Drag scenery             | Right stick / L2 / R2 |
+| Recenter camera  | C             | Camera button            | R3                    |
+| Map              | M             | Map button               | —                     |
+| Pause            | Escape        | Pause button             | —                     |
+
+Small joystick movements walk slowly; touch the pad anywhere to establish a neutral thumb position, then slide to move. Walking turns gradually and brakes quickly. Charging moves forward while held, even with a neutral stick, and steers in a wider arc. The camera stays steady while walking and running; use the camera button or C to recenter behind the dragon.
 
 Armored Gnorcs require a charge; large Gnorcs require flame. Thieves flee with shoulder sacks and glance over their shoulders. Giants raise an arm before striking, giving you time to flame them or retreat. Red gems lie in the grass; green gems emerge from defeated enemies and chests broken with flame or charge. Nearby gems pull toward the dragon. Rescues happen automatically, restore health and set your fall-recovery checkpoint. Fire shortens nearby grass and darkens its tips. The dragonfly follows smoothly and changes color with health. Blinking, breathing, galloping, charging, jumping and gliding use independently animated joints. Progress saves on this device, including collected gems, dragon friends, broken chests and defeated enemies; player position resets to the garden when reopening the game. Use Settings to reset it.
 
@@ -41,6 +44,7 @@ Phones fill the viewport from the title screen. Tapping Play also requests nativ
 - `dist/engine/enemy-ai.js`: terrain-safe patrols, fleeing and giant attack phases.
 - `dist/game/companion.js`: animated dragonfly and health colors.
 - `dist/game/exploration-scenery.js`: watchtower, staircase landing and hidden garden scenery.
+- `dist/engine/movement.js`: bounded turning, acceleration and braking with centralized tuning; see [control design](docs/controls.md).
 - `dist/engine/input.js`: unified keyboard, multi-touch and gamepad inputs with queued taps.
 - `dist/engine/display.js`: gesture-gated fullscreen and game selection/context-menu protection.
 - `dist/engine/renderer.js`: scene lighting and visual state adapter; chase-camera.js handles the low trailing view.

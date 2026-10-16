@@ -117,7 +117,7 @@ export class GameRenderer {
     this.renderer.shadowMap.enabled = value !== 'low';
     this.resize();
   }
-  update(dt, sim, playing, orbit = 0, effectsActive = playing) {
+  update(dt, sim, playing, orbit = 0, effectsActive = playing, recenter = false) {
     this.time += dt;
     const p = sim.player;
     this.dragon.position.set(p.x, p.y + 0.07, p.z);
@@ -132,7 +132,7 @@ export class GameRenderer {
       p,
     );
     if (playing) {
-      const c = this.chase.update(effectsActive ? dt : 0, p, orbit);
+      const c = this.chase.update(effectsActive ? dt : 0, p, orbit, recenter);
       this.angle = c.angle;
       this.target.set(c.targetX, c.targetY, c.targetZ);
       this.cameraDesired.set(c.x, c.y, c.z);

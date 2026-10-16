@@ -1372,6 +1372,10 @@ body * {
   .stage-tools {
     margin-bottom: env(safe-area-inset-bottom);
   }
+  .stage-tools .glass-button {
+    width: 44px;
+    height: 44px;
+  }
   .intro-bottom {
     left: calc(22px + env(safe-area-inset-left));
     bottom: calc(22px + env(safe-area-inset-bottom));

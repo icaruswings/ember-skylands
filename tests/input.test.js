@@ -34,7 +34,7 @@ function setup() {
   const canvas = new Element(),
     joy = new Element(),
     thumb = new Element(),
-    buttons = ['jump', 'flame', 'charge', 'interact'].map((x) => new Element(x));
+    buttons = ['jump', 'flame', 'charge', 'interact', 'recenter'].map((x) => new Element(x));
   globalThis.window = new Element();
   globalThis.document = new Element();
   document.querySelector = (x) => (x === '#joystick' ? joy : thumb);
@@ -75,7 +75,8 @@ test('short keyboard jump presses are buffered', () => {
 });
 test('focus loss clears joystick, keys, pending taps and held pointers', () => {
   const { input, buttons, joy } = setup();
-  joy.emit('pointerdown', { pointerId: 1, clientX: 90, clientY: 50 });
+  joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
+  joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
   buttons[2].emit('pointerdown', { pointerId: 2 });
   buttons[0].emit('pointerdown', { pointerId: 3 });
   window.emit('blur');
@@ -91,7 +92,7 @@ test('blocked gamepad policy leaves keyboard and touch playable', () => {
   };
   assert.doesNotThrow(() => input.sample(0));
 });
-test('holding right follows a straight heading as the chase camera turns', () => {
+test('holding right keeps a steady camera and follows a straight heading', () => {
   const { input } = setup(),
     camera = new ChaseCamera();
   const sim = new Simulation({
@@ -107,12 +108,12 @@ test('holding right follows a straight heading as the chase camera turns', () =>
     camera.update(1 / 60, sim.player);
   }
   assert.ok(sim.player.x > 40);
-  assert.ok(Math.abs(sim.player.z - 10) < 0.01);
+  assert.ok(Math.abs(sim.player.z - 10) < 0.6);
   input.keys.clear();
   input.sample(camera.angle);
   input.keys.add('KeyW');
   const next = input.sample(camera.angle);
-  assert.ok(next.x > 0.9, 'new gesture must use the new camera direction');
+  assert.ok(next.z < -0.9, 'new gesture must use the visible camera direction');
 });
 test('a released and restarted movement gesture uses the new view between samples', () => {
   const { input, joy } = setup();
@@ -122,9 +123,91 @@ test('a released and restarted movement gesture uses the new view between sample
   window.emit('keydown', { code: 'KeyW' });
   assert.ok(input.sample(-Math.PI / 2).x > 0.9);
   input.clear();
-  joy.emit('pointerdown', { pointerId: 1, clientX: 90, clientY: 50 });
+  joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
+  joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
   input.sample(0);
   joy.emit('pointerup', { pointerId: 1 });
-  joy.emit('pointerdown', { pointerId: 2, clientX: 50, clientY: 10 });
+  joy.emit('pointerdown', { pointerId: 2, clientX: 50, clientY: 50 });
+  joy.emit('pointermove', { pointerId: 2, clientX: 50, clientY: 10 });
   assert.ok(input.sample(-Math.PI / 2).x > 0.9);
+});
+
+test('changing direction during one thumb gesture follows the current visible camera', () => {
+  const { input, joy } = setup();
+  joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
+  joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
+  input.sample(0);
+  joy.emit('pointermove', { pointerId: 1, clientX: 50, clientY: 10 });
+  const next = input.sample(-Math.PI / 2);
+  assert.ok(next.x > 0.95 && Math.abs(next.z) < 0.01);
+});
+test('touch starts neutral wherever the thumb lands and small jitter stays still', () => {
+  const { input, joy } = setup();
+  joy.emit('pointerdown', { pointerId: 1, clientX: 72, clientY: 59 });
+  assert.equal(Math.hypot(input.sample(0).x, input.sample(0).z), 0);
+  joy.emit('pointermove', { pointerId: 1, clientX: 74, clientY: 60 });
+  assert.equal(Math.hypot(input.sample(0).x, input.sample(0).z), 0);
+  joy.emit('pointermove', { pointerId: 1, clientX: 84, clientY: 59 });
+  const walking = input.sample(0);
+  assert.ok(walking.x > 0 && walking.x < 0.3);
+});
+test('the second finger cannot take ownership of an active joystick', () => {
+  const { input, joy } = setup();
+  joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
+  joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
+  joy.emit('pointerdown', { pointerId: 2, clientX: 50, clientY: 50 });
+  assert.ok(input.sample(0).x > 0.9);
+  joy.emit('pointerup', { pointerId: 1 });
+  assert.equal(input.sample(0).x, 0);
+});
+test('analogue gamepad response has the same radial precision in every direction', () => {
+  const { input } = setup();
+  const pad = { connected: true, axes: [0.2, 0, 0, 0], buttons: [] };
+  navigator.getGamepads = () => [pad];
+  const cardinal = input.sample(0);
+  pad.axes = [Math.SQRT1_2 * 0.2, Math.SQRT1_2 * 0.2, 0, 0];
+  const diagonal = input.sample(0);
+  assert.ok(Math.hypot(diagonal.x, diagonal.z) > 0);
+  assert.ok(
+    Math.abs(Math.hypot(cardinal.x, cardinal.z) - Math.hypot(diagonal.x, diagonal.z)) < 0.001,
+  );
+});
+test('PlayStation face buttons use square charge and circle flame', () => {
+  const { input } = setup(),
+    buttons = Array.from({ length: 12 }, () => ({ pressed: false }));
+  navigator.getGamepads = () => [{ connected: true, axes: [0, 0, 0, 0], buttons }];
+  buttons[2].pressed = true;
+  assert.equal(input.sample(0).charge, true);
+  buttons[2].pressed = false;
+  buttons[1].pressed = true;
+  assert.equal(input.sample(0).flame, true);
+});
+
+test('camera recenter works with keyboard, touch and gamepad R3 without repeating', () => {
+  const { input, buttons } = setup();
+  window.emit('keydown', { code: 'KeyC' });
+  assert.equal(input.recenter, true);
+  input.recenter = false;
+  window.emit('keydown', { code: 'KeyC', repeat: true });
+  assert.equal(input.recenter, false);
+  buttons[4].emit('pointerdown', { pointerId: 7 });
+  assert.equal(input.recenter, true);
+  input.recenter = false;
+  buttons[4].emit('click', { detail: 0 });
+  assert.equal(input.recenter, true);
+  input.recenter = false;
+  const pad = {
+    connected: true,
+    axes: [0, 0, 0],
+    buttons: Array.from({ length: 12 }, () => ({ pressed: false })),
+  };
+  navigator.getGamepads = () => [pad];
+  pad.buttons[11].pressed = true;
+  input.sample(0);
+  assert.equal(input.recenter, true);
+  input.recenter = false;
+  input.sample(0);
+  assert.equal(input.recenter, false);
+  input.clear();
+  assert.equal(input.orbit, 0);
 });

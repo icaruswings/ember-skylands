@@ -27,6 +27,13 @@ with sync_playwright() as p:
  page.wait_for_timeout(800)
  assert page.evaluate('getSelection().toString()') == ''
  touch('touchEnd',[]);page.wait_for_function('!ember.snapshot().player.charging && ember.snapshot().player.vx === 0')
+ # Explicit recenter works while stationary, including after a charged turn.
+ camera_button=page.locator('[data-action="recenter"]')
+ assert camera_button.is_visible()
+ assert camera_button.bounding_box()['width']>=44
+ assert camera_button.bounding_box()['height']>=44
+ camera_button.tap()
+ page.wait_for_function('(()=>{const s=ember.snapshot();return Math.abs(Math.atan2(Math.sin(s.camera.angle-s.player.angle-Math.PI),Math.cos(s.camera.angle-s.player.angle-Math.PI)))<.04})()')
  # Very short taps must still register between rendered frames.
  page.locator('[data-action="jump"]').tap();page.wait_for_function('ember.snapshot().player.y > .1',timeout=12000)
  page.locator('[data-action="jump"]').tap();page.wait_for_function('ember.snapshot().player.gliding',timeout=12000)
@@ -42,7 +49,7 @@ with sync_playwright() as p:
  assert page.locator('#joystick').bounding_box()['y']+page.locator('#joystick').bounding_box()['height']<390
  page.screenshot(path='/workspace/sites/ember-skylands/docs/mobile-landscape.png')
  assert not errors,errors
- print('MOBILE PASS: fullscreen, full viewport, no selection, long press, multitouch movement + charge, jump/glide, pause settings, map, portrait/landscape',flush=True)
+ print('MOBILE PASS: fullscreen, full viewport, no selection, long press, multitouch movement + charge, camera recenter, jump/glide, pause settings, map, portrait/landscape',flush=True)
  context.close()
  # Safari/embedded browsers can lack or reject fullscreen: play must still fill the viewport.
  for failure in ['missing','rejected']:

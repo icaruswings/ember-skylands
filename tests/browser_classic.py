@@ -66,11 +66,14 @@ with sync_playwright() as p:
     print('FLEEING ARMORED GNORC/CHARGE/GREEN DROP PASS',flush=True);context.close()
     context,page,errors=game(browser)
     page.keyboard.down('KeyD');page.wait_for_function('ember.snapshot().player.x>2',timeout=30000);page.keyboard.up('KeyD')
-    page.wait_for_timeout(1400)
+    page.wait_for_function('Math.hypot(ember.snapshot().player.vx,ember.snapshot().player.vz)===0')
+    assert abs(page.evaluate('ember.snapshot().camera.angle'))<.03
+    page.keyboard.press('KeyC')
+    page.wait_for_function('(()=>{const s=ember.snapshot();return Math.abs(Math.atan2(Math.sin(s.camera.angle-s.player.angle-Math.PI),Math.cos(s.camera.angle-s.player.angle-Math.PI)))<.04})()')
     state=page.evaluate('ember.snapshot()')
     import math
     dx=state['camera']['x']-state['player']['x'];dz=state['camera']['z']-state['player']['z']
     assert dx*math.sin(state['player']['angle'])+dz*math.cos(state['player']['angle'])<0
     assert not errors,errors
-    print('LOW CAMERA TRAILING TURN PASS',json.dumps(state['camera']),flush=True)
+    print('STEADY SIDEWAYS CAMERA / KEYBOARD RECENTER PASS',json.dumps(state['camera']),flush=True)
     context.close();browser.close()

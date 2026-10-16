@@ -1,5 +1,6 @@
 /** Rendering-independent 60 Hz simulation. No DOM, GPU, or audio dependencies. */
 import { terrainHeight, obstacleBlocks } from './terrain.js';
+import { movePlayer } from './movement.js';
 import { updateEnemy } from './enemy-ai.js';
 export { terrainHeight } from './terrain.js';
 export function validSave(raw, level) {
@@ -136,21 +137,7 @@ export class Simulation {
     }
     this.flameHeld = !!input.flame;
     p.charging = !!input.charge && !p.gliding;
-    const speed = p.charging ? 15 : p.gliding ? 9 : 7;
-    let x = input.x || 0,
-      z = input.z || 0;
-    const length = Math.hypot(x, z);
-    if (length > 1) {
-      x /= length;
-      z /= length;
-    }
-    if (p.gliding && length < 0.08) {
-      x = Math.sin(p.angle);
-      z = Math.cos(p.angle);
-    }
-    if (length > 0.08) p.angle = Math.atan2(x, z);
-    p.vx = x * speed;
-    p.vz = z * speed;
+    movePlayer(p, input, dt);
     let nx = p.x + p.vx * dt,
       nz = p.z + p.vz * dt;
     for (const o of this.level.obstacles) {
