@@ -30,12 +30,13 @@ class Element {
     return { left: 0, top: 0, width: 100, height: 100 };
   }
 }
-function setup() {
+function setup(touchEvents = false) {
   const canvas = new Element(),
     joy = new Element(),
     thumb = new Element(),
     buttons = ['jump', 'flame', 'charge', 'interact', 'recenter'].map((x) => new Element(x));
   globalThis.window = new Element();
+  if (touchEvents) window.ontouchstart = null;
   globalThis.document = new Element();
   document.querySelector = (x) => (x === '#joystick' ? joy : thumb);
   document.querySelectorAll = (x) =>
@@ -210,4 +211,127 @@ test('camera recenter works with keyboard, touch and gamepad R3 without repeatin
   assert.equal(input.recenter, false);
   input.clear();
   assert.equal(input.orbit, 0);
+});
+
+const finger = (identifier, clientX, clientY) => ({ identifier, clientX, clientY });
+function touchGesture(element, id, nativeId, from, to) {
+  const first = finger(nativeId, ...from),
+    last = finger(nativeId, ...to);
+  element.emit('pointerdown', {
+    pointerId: id,
+    pointerType: 'touch',
+    clientX: first.clientX,
+    clientY: first.clientY,
+  });
+  element.emit('touchstart', { touches: [first], changedTouches: [first] });
+  element.emit('pointermove', {
+    pointerId: id,
+    pointerType: 'touch',
+    clientX: last.clientX,
+    clientY: last.clientY,
+  });
+  element.emit('touchmove', { touches: [last], changedTouches: [last] });
+  return last;
+}
+test('native finger release brakes the dragon even when pointerup never arrives', () => {
+  const { input, joy } = setup(true);
+  const touch = touchGesture(joy, 7, 42, [50, 50], [90, 50]);
+  const sim = new Simulation({
+    ...LEVEL,
+    islands: [{ x: 0, z: 0, y: 0, r: 200 }],
+    obstacles: [],
+    enemies: [],
+    rescues: [],
+  });
+  for (let i = 0; i < 30; i++) sim.update(1 / 60, input.sample(0));
+  assert.ok(sim.player.vx > 6.5);
+  document.emit('touchend', { touches: [], changedTouches: [touch] });
+  const x = sim.player.x;
+  for (let i = 0; i < 120; i++) sim.update(1 / 60, input.sample(0));
+  assert.equal(Math.hypot(sim.player.vx, sim.player.vz), 0);
+  assert.ok(
+    sim.player.x - x < 0.35,
+    'lifting a finger must stop movement rather than run off the island',
+  );
+  // Duplicate pointer release must be harmless, and a new finger must work.
+  window.emit('pointerup', { pointerId: 7, pointerType: 'touch' });
+  touchGesture(joy, 8, 43, [50, 50], [10, 50]);
+  assert.ok(input.sample(0).x < -0.9);
+});
+test('touch release clears charge while preserving the finger still on the joystick', () => {
+  const { input, joy, buttons } = setup(true);
+  const moving = touchGesture(joy, 7, 42, [50, 50], [90, 50]);
+  const charge = finger(99, 150, 50);
+  buttons[2].emit('pointerdown', { pointerId: 9, pointerType: 'touch', clientX: 150, clientY: 50 });
+  buttons[2].emit('touchstart', { touches: [moving, charge], changedTouches: [charge] });
+  assert.equal(input.sample(0).charge, true);
+  document.emit('touchend', { touches: [moving], changedTouches: [charge] });
+  assert.equal(input.sample(0).charge, false);
+  assert.ok(input.sample(0).x > 0.9);
+  document.emit('touchcancel', { touches: [], changedTouches: [moving] });
+  assert.equal(input.sample(0).x, 0);
+});
+test('the active touch list recovers a missing release before the next gesture', () => {
+  const { input, joy } = setup(true);
+  touchGesture(joy, 7, 42, [50, 50], [90, 50]);
+  assert.ok(input.sample(0).x > 0.9);
+  const next = finger(43, 50, 50);
+  // The old finger is absent from the browser's authoritative active list.
+  document.emit('touchstart', { touches: [next], changedTouches: [next] });
+  joy.emit('pointerdown', { pointerId: 8, pointerType: 'touch', clientX: 50, clientY: 50 });
+  joy.emit('touchstart', { touches: [next], changedTouches: [next] });
+  assert.equal(input.sample(0).x, 0);
+  joy.emit('touchmove', { touches: [finger(43, 10, 50)], changedTouches: [finger(43, 10, 50)] });
+  assert.ok(input.sample(0).x < -0.9);
+});
+test('releasing outside the control clears mouse movement and charge without pointer capture', () => {
+  const { input, joy, buttons } = setup();
+  joy.setPointerCapture = () => {
+    throw new Error('capture unavailable');
+  };
+  assert.doesNotThrow(() => joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 }));
+  joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
+  buttons[2].emit('pointerdown', { pointerId: 2 });
+  assert.ok(input.sample(0).x > 0.9);
+  assert.equal(input.sample(0).charge, true);
+  window.emit('pointerup', { pointerId: 1 });
+  window.emit('pointerup', { pointerId: 2 });
+  assert.equal(input.sample(0).x, 0);
+  assert.equal(input.sample(0).charge, false);
+});
+test('mouse movement with no held button recovers a dropped release', () => {
+  const { input, joy } = setup();
+  joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
+  joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
+  window.emit('pointermove', { pointerId: 1, pointerType: 'mouse', buttons: 0 });
+  assert.equal(input.sample(0).x, 0);
+});
+test('layout changes and page suspension cancel held controls and pending actions', () => {
+  for (const event of ['resize', 'orientationchange', 'pagehide']) {
+    const { input, joy, buttons } = setup();
+    joy.emit('pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
+    joy.emit('pointermove', { pointerId: 1, clientX: 90, clientY: 50 });
+    buttons[2].emit('pointerdown', { pointerId: 2 });
+    buttons[0].emit('pointerdown', { pointerId: 3 });
+    window.emit(event);
+    const state = input.sample(0);
+    assert.equal(state.x, 0, event);
+    assert.equal(state.charge, false, event);
+    assert.equal(state.jumpPressed, false, event);
+  }
+});
+
+test('pointer-only touch input recovers when the browser reports contact has ended', () => {
+  const { input, joy } = setup();
+  joy.emit('pointerdown', { pointerId: 1, pointerType: 'touch', clientX: 50, clientY: 50 });
+  joy.emit('pointermove', {
+    pointerId: 1,
+    pointerType: 'touch',
+    buttons: 1,
+    clientX: 90,
+    clientY: 50,
+  });
+  assert.ok(input.sample(0).x > 0.9);
+  window.emit('pointermove', { pointerId: 1, pointerType: 'touch', buttons: 0 });
+  assert.equal(input.sample(0).x, 0);
 });

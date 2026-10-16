@@ -33,3 +33,13 @@ Regression coverage includes touch anchoring and jitter, pointer ownership, live
 - Independent review reproduced and fixed the held-diagonal feedback loop. A 20-second run now travels 139.57 units with 139.57 units displacement and zero camera yaw drift.
 
 Browser verification uses Chromium with software WebGL and emulated touch devices. Physical iPhone/Safari testing was not available in this environment.
+
+### Missed-release repair
+
+A missing element-level `pointerup` could leave the last stick direction or charge held indefinitely. The regression reproduces full-speed movement after the finger has lifted when pointer-release events are blocked.
+
+`hold-control.js` now owns hold lifetimes for the joystick, camera drag and action buttons. Touch-capable browsers use native touch identifiers and reconcile them against the browser’s active finger list. Finger input is handled once, without duplicating the accompanying pointer stream. Releasing one finger leaves other controls intact. Mouse and pen retain best-effort pointer capture, with window-level release and released-button recovery. Page suspension, focus loss, fullscreen changes and viewport/orientation changes cancel held controls and pending taps. A stationary held thumb remains valid without an inactivity timeout.
+
+Regression coverage includes the rendering-independent stop/braking behavior, dropped pointer releases, failed capture, independent joystick/charge fingers, touch cancellation, stale-finger recovery, and layout interruption. `browser_input_release.py --baseline` reproduces the published bug; the normal command exercises the repaired lifetimes using real Chromium touch events against the production Input and Simulation modules. The full game’s phone test checks touch actions, jump/glide, recentering and fullscreen behavior.
+
+The repair passes all 16 Node test files, including seven new release regressions. The browser fault-injection fixture passes with pointer releases suppressed, partial multitouch releases, cancellation, off-pad release, resize, rapid taps, and unavailable mouse pointer capture. The complete phone browser check passes in portrait/landscape and with native fullscreen available, missing or rejected. Review found no important issues. No physics or world-layout changes were needed.

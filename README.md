@@ -46,6 +46,7 @@ Phones fill the viewport from the title screen. Tapping Play also requests nativ
 - `dist/game/exploration-scenery.js`: watchtower, staircase landing and hidden garden scenery.
 - `dist/engine/movement.js`: bounded turning, acceleration and braking with centralized tuning; see [control design](docs/controls.md).
 - `dist/engine/input.js`: unified keyboard, multi-touch and gamepad inputs with queued taps.
+- `dist/engine/hold-control.js`: native finger lifetimes, independent multitouch releases, and mouse/pen capture fallbacks.
 - `dist/engine/display.js`: gesture-gated fullscreen and game selection/context-menu protection.
 - `dist/engine/renderer.js`: scene lighting and visual state adapter; chase-camera.js handles the low trailing view.
 - `dist/engine/batching.js`: geometry/material batching to reduce draw calls.
@@ -82,6 +83,7 @@ The Node suite covers gameplay, a complete movement-driven adventure, touch edge
 ```sh
 python tests/browser_smoke.py
 python tests/browser_mobile.py
+python tests/browser_input_release.py
 python tests/browser_progress.py
 python tests/browser_fire.py
 python tests/browser_assets.py

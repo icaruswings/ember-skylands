@@ -1,3 +1,5 @@
+import { bindHold } from './hold-control.js';
+
 /** Radial response preserves diagonal precision and leaves room for walking. */
 export function shapeStick(x, z, deadzone = 0.12) {
   const length = Math.hypot(x, z);
@@ -9,6 +11,7 @@ export function shapeStick(x, z, deadzone = 0.12) {
 /** Keyboard, pointer and standard gamepad controls share one action state. */
 export class Input {
   constructor(canvas) {
+    this.cancelHolds = [];
     this.keys = new Set();
     this.touch = { x: 0, z: 0 };
     this.buttons = new Set();
@@ -33,26 +36,28 @@ export class Input {
     window.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
     });
-    window.addEventListener('blur', () => this.clear());
+    for (const event of ['blur', 'pagehide', 'resize', 'orientationchange'])
+      window.addEventListener(event, () => this.clear());
+    document.addEventListener('fullscreenchange', () => this.clear());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.clear();
     });
-    canvas.addEventListener('pointerdown', (e) => {
-      if (!this.lookEnabled) return;
-      this.drag = { id: e.pointerId, x: e.clientX };
-      canvas.setPointerCapture(e.pointerId);
-    });
-    canvas.addEventListener('pointermove', (e) => {
-      if (this.drag?.id === e.pointerId) {
-        this.orbit -= (e.clientX - this.drag.x) * 0.006;
-        this.drag.x = e.clientX;
-      }
-    });
-    const end = (e) => {
-      if (this.drag?.id === e.pointerId) this.drag = null;
-    };
-    canvas.addEventListener('pointerup', end);
-    canvas.addEventListener('pointercancel', end);
+    this.cancelHolds.push(
+      bindHold(canvas, {
+        start: (e) => {
+          if (!this.lookEnabled || this.drag) return false;
+          this.drag = { id: e.pointerId, x: e.clientX };
+        },
+        move: (e) => {
+          if (this.drag?.id !== e.pointerId) return;
+          this.orbit -= (e.clientX - this.drag.x) * 0.006;
+          this.drag.x = e.clientX;
+        },
+        end: (e) => {
+          if (this.drag?.id === e.pointerId) this.drag = null;
+        },
+      }),
+    );
     const joy = document.querySelector('#joystick'),
       thumb = document.querySelector('#thumb');
     let joyId = null,
@@ -71,34 +76,30 @@ export class Input {
       this.touch = shapeStick(dx / max, dy / max);
       thumb.style.transform = `translate(${anchor.x - r.left - r.width / 2 + dx * scale}px,${anchor.y - r.top - r.height / 2 + dy * scale}px)`;
     };
-    joy.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      if (joyId !== null) return;
-      joyId = e.pointerId;
-      anchor = { x: e.clientX, y: e.clientY };
-      joy.setPointerCapture(joyId);
-      update(e);
-    });
-    joy.addEventListener('pointermove', (e) => {
-      if (e.pointerId === joyId) update(e);
-    });
-    const release = (e) => {
-      if (e.pointerId === joyId) {
-        this.releaseJoystick();
-        this.touch = { x: 0, z: 0 };
-        thumb.style.transform = 'translate(0,0)';
-      }
-    };
-    joy.addEventListener('pointerup', release);
-    joy.addEventListener('pointercancel', release);
-    joy.addEventListener('lostpointercapture', release);
+    this.cancelHolds.push(
+      bindHold(joy, {
+        start: (e) => {
+          if (joyId !== null) return false;
+          joyId = e.pointerId;
+          anchor = { x: e.clientX, y: e.clientY };
+          update(e);
+        },
+        move: (e) => {
+          if (e.pointerId === joyId) update(e);
+        },
+        end: (e) => {
+          if (e.pointerId !== joyId) return;
+          this.releaseJoystick();
+          this.touch = { x: 0, z: 0 };
+          thumb.style.transform = 'translate(0,0)';
+        },
+      }),
+    );
     for (const b of document.querySelectorAll('[data-action]')) {
       const action = b.dataset.action,
         active = new Set();
       this.pointers.set(action, active);
       const down = (e) => {
-        e.preventDefault();
-        b.setPointerCapture(e.pointerId);
         active.add(e.pointerId);
         this.buttons.add(action);
         if (action === 'recenter') this.recenter = true;
@@ -112,17 +113,15 @@ export class Input {
           b.classList.remove('pressed');
         }
       };
-      b.addEventListener('pointerdown', down);
+      this.cancelHolds.push(bindHold(b, { start: down, end: up }));
       if (action === 'recenter')
         b.addEventListener('click', (e) => {
           if (e.detail === 0) this.recenter = true;
         });
-      b.addEventListener('pointerup', up);
-      b.addEventListener('pointercancel', up);
-      b.addEventListener('lostpointercapture', up);
     }
   }
   clear() {
+    for (const cancel of this.cancelHolds) cancel();
     this.recenter = false;
     this.orbit = 0;
     this.releaseJoystick();
