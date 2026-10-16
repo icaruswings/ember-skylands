@@ -43,7 +43,7 @@ with sync_playwright() as p:
         raise AssertionError('Touch route could not reach '+str((x,z))+': '+str(page.evaluate('ember.snapshot().player')))
     walk(-13,-6);walk(-13,-3);walk(-15,-1);walk(-17,1)
     assert page.evaluate('ember.snapshot().player.y')>5.5
-    page.locator('#pause-button').tap();page.wait_for_function("ember.snapshot().mode==='paused'")
+    page.locator('#pause-button').tap();page.locator('#resume-button').wait_for(state='visible')
     frozen=page.evaluate('({time:ember.snapshot().adventureTime,pose:ember.snapshot().dragonPose})')
     page.wait_for_timeout(600)
     assert page.evaluate('({time:ember.snapshot().adventureTime,pose:ember.snapshot().dragonPose})')==frozen
