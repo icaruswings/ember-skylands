@@ -37,3 +37,32 @@ test('rendered grotto and garden walls match collision boxes after terrain place
     for (const s of land.secrets) assert.ok(landmarks.includes(s.name));
   }
 });
+
+test('orchard pocket hedge foundations stay below the entire sloping footprint', () => {
+  const land = LANDS[0],
+    material = new T.MeshStandardMaterial();
+  const { root } = createLandFeatures(new T.Group(), land, {
+    stone: material,
+    roof: material,
+    trim: material,
+  });
+  root.updateMatrixWorld(true);
+  const walls = [];
+  root.traverse((o) => {
+    if (!o.isMesh || o.geometry.type !== 'BoxGeometry') return;
+    const box = new T.Box3().setFromObject(o);
+    if (
+      box.min.x > 37 &&
+      box.max.x < 51 &&
+      box.min.z > 18 &&
+      box.max.z < 30 &&
+      box.max.y - box.min.y > 1
+    )
+      walls.push(box);
+  });
+  assert.equal(walls.length, 2);
+  for (const box of walls)
+    for (const x of [box.min.x, box.max.x])
+      for (const z of [box.min.z, box.max.z])
+        assert.ok(box.min.y <= groundHeight(land, x, z), 'hedge foundation floats over hill');
+});

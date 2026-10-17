@@ -167,6 +167,17 @@ function makeLand(theme, index) {
   const spawn = { x: layout.spawn[0], y: 0, z: layout.spawn[1] };
   elevate(spawn);
   const obstacles = layout.obstacles.map((o) => ({ ...o }));
+  for (const secret of secrets.filter((s) => s.kind === 'grove'))
+    for (const side of [-1, 1])
+      obstacles.push({
+        x: secret.x + side * 5,
+        z: secret.z - 1,
+        halfX: 0.75,
+        halfZ: 4,
+        height: 1.4,
+        style: 'grove',
+        secretId: secret.id,
+      });
   for (const secret of secrets.filter((s) => s.kind === 'grotto')) {
     // Three matching masonry walls; the entire south-facing entrance stays open.
     for (const side of [-1, 1])
@@ -191,14 +202,15 @@ function makeLand(theme, index) {
   }
   for (const obstacle of obstacles) {
     elevate(obstacle);
-    if (obstacle.style === 'grotto') {
+    if (!obstacle.r) {
       const secret = secrets.find((s) => s.id === obstacle.secretId);
+      const top = obstacle.style === 'grotto' ? secret.y + 8.4 : obstacle.y + obstacle.height;
       const heights = [];
       for (const x of [obstacle.x - obstacle.halfX, obstacle.x, obstacle.x + obstacle.halfX])
         for (const z of [obstacle.z - obstacle.halfZ, obstacle.z, obstacle.z + obstacle.halfZ])
           heights.push(groundHeight(surface, x, z));
       obstacle.y = Math.min(...heights) - 0.25;
-      obstacle.height = secret.y + 8.4 - obstacle.y;
+      obstacle.height = top - obstacle.y;
     }
   }
   const paths = [layout.mainLoop, ...layout.branches].flatMap((points, index) =>

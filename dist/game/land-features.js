@@ -38,6 +38,8 @@ export function createLandFeatures(root, level, { stone, roof, trim }) {
             0.25,
             0.4,
           );
+      } else if (o.style === 'grove') {
+        block(g, leaves, 0, height + 0.3, 0, 1.5, 0.6, 8);
       }
     } else if (o.style === 'mesa') {
       mesh(new T.CylinderGeometry(o.r * 0.8, o.r, height, 24), stone, g, 0, height / 2, 0);
@@ -89,10 +91,7 @@ export function createLandFeatures(root, level, { stone, roof, trim }) {
         orb(g, light, side * 5.3, 3.6, 5, 0.25, 0.45, 0.25);
       }
     } else if (secret.kind === 'grove') {
-      for (const side of [-1, 1]) {
-        block(g, stone, side * 5, 0.7, -1, 1.5, 1.4, 8);
-        block(g, leaves, side * 5, 1.5, -1, 1.7, 0.8, 8.2);
-      }
+      // The terrain-fitted, collidable hedge walls are authored obstacles above.
     } else if (secret.kind === 'camp') {
       // Supplies flank the treasure, leaving a six-unit aisle from the trail.
       for (const side of [-1, 1])
