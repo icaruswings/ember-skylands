@@ -201,7 +201,7 @@ function worlds(withMap = false) {
   campaign.recordCurrent();
   const cards = LANDS.map((land) => {
     const s = campaign.worlds[land.id];
-    return `<button class="world-card ${land.id === campaign.landId ? 'current' : ''}" data-land="${land.id}"><strong>${land.name}</strong><small>${land.description}</small><span class="world-progress">${s.gems.length} / ${land.gems.length} gems · ${s.rescues.length} / 3 friends · ${s.enemies.length} / ${land.enemies.length} Gnorcs</span></button>`;
+    return `<button class="world-card ${land.id === campaign.landId ? 'current' : ''}" data-land="${land.id}"><strong>${land.name}</strong><small>${land.description}</small><span class="world-progress">${s.gems.length} / ${land.gems.length} gems · ${s.rescues.length} / 3 friends · ${s.enemies.length} / ${land.enemies.length} Gnorcs · ${s.secrets.length} / ${land.secrets.length} secrets</span></button>`;
   }).join('');
   openDialog(
     `<span class="dialog-eyebrow">EVERY WORLD IS OPEN</span><h2 id="dialog-title">${withMap ? sim.level.name : 'Choose a world.'}</h2>${withMap ? '<canvas id="big-map" class="big-map" width="600" height="240" aria-label="Current world map"></canvas>' : '<p>Big places to run. New places to explore. Go wherever you like.</p>'}<div class="world-grid">${cards}<div class="world-card flight-card"><strong>Sunny Flight</strong><small>Arches, chests, train barrels and planes. Practise freely or race the clock.</small><span class="world-progress">${campaign.flightRecord.bestTime ? `Best: ${seconds(campaign.flightRecord.bestTime)} · ` : ''}${campaign.flightRecord.completed} completed flights</span><div class="dialog-actions"><button id="flight-practice" class="primary-button">Practise flying</button><button id="flight-timed" class="secondary-button">Timed challenge</button></div></div></div><p class="flight-tip">Flight: push up to climb, sideways to turn. Flame targets; fly through arches. Practice has no countdown. Change flight inversion in Settings.</p>${!flight() ? '<button id="replay-enemies" class="secondary-button">Play the bad guys again</button>' : ''}<button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
@@ -238,7 +238,13 @@ function flightResult() {
 function events() {
   for (const e of sim.drain()) {
     audio.effect(
-      e.type === 'flight-target' ? 'gem' : e.type === 'flight-complete' ? 'complete' : e.type,
+      e.type === 'secret'
+        ? 'rescue'
+        : e.type === 'flight-target'
+          ? 'gem'
+          : e.type === 'flight-complete'
+            ? 'complete'
+            : e.type,
       e.x ? (e.x - sim.player.x) / 12 : 0,
     );
     if (['gem', 'enemy', 'rescue', 'chest', 'flight-target'].includes(e.type)) {
@@ -246,6 +252,12 @@ function events() {
       if (e.type !== 'flight-target') save();
     }
     if (e.type === 'rescue') toast(`${e.name} is free! Health restored. Checkpoint saved.`);
+    if (e.type === 'secret') {
+      toast(
+        `Secret found: ${e.name}! ${sim.discovered.size} / ${sim.level.secrets.length} discovered.`,
+      );
+      save();
+    }
     if (e.type === 'respawn') toast('Back on your feet. Your treasure is safe.');
     if (e.type === 'travel') {
       if (e.destination === 'sunny-flight') worlds();
@@ -294,9 +306,13 @@ function updateHUD() {
       .join('');
     $('quest-progress').style.width = `${(targets / 32) * 100}%`;
   } else {
-    $('quest-title').textContent = sim.complete ? `${level.name} explored` : 'Room to be a dragon';
+    const region = level.regions.reduce((near, r) =>
+      Math.hypot(p.x - r.x, p.z - r.z) < Math.hypot(p.x - near.x, p.z - near.z) ? r : near,
+    );
+    $('quest-title').textContent =
+      Math.hypot(p.x - region.x, p.z - region.z) < 18 ? region.name : level.loopName;
     $('quest-copy').textContent =
-      `${level.enemies.length - sim.defeated.size} Gnorcs · ${3 - sim.rescued.size} friends to find · ${Math.max(0, 30 - sim.collected.size)} gems to your medal`;
+      `${level.enemies.length - sim.defeated.size} Gnorcs · ${3 - sim.rescued.size} friends · ${Math.max(0, 30 - sim.collected.size)} gems to medal · ${sim.discovered.size}/${level.secrets.length} secrets`;
     $('quest-progress').style.width =
       `${Math.min(100, (Math.min(sim.collected.size, 30) / 30 + sim.rescued.size / 3) * 50)}%`;
   }
@@ -438,6 +454,7 @@ try {
       rescues: sim.rescued.size,
       enemies: sim.defeated.size,
       chests: sim.broken.size,
+      secrets: sim.discovered?.size || 0,
       enemyStates: sim.enemies
         .filter((e) => !sim.defeated.has(e.id))
         .map((e) => ({ id: e.id, state: e.state, timer: e.timer })),

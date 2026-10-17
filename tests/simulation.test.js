@@ -99,6 +99,7 @@ test('save validation drops invalid identifiers and corrupt input', () => {
     rescues: [],
     enemies: [],
     chests: [],
+    secrets: [],
     complete: false,
   });
   const v = validSave(

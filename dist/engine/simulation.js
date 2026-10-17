@@ -4,7 +4,7 @@ import { movePlayer } from './movement.js';
 import { updateEnemy } from './enemy-ai.js';
 export { terrainHeight } from './terrain.js';
 export function validSave(raw, level) {
-  const empty = { gems: [], rescues: [], enemies: [], chests: [], complete: false };
+  const empty = { gems: [], rescues: [], enemies: [], chests: [], secrets: [], complete: false };
   if (!raw || raw.version !== 1) return empty;
   const clean = (v, all) =>
     Array.isArray(v)
@@ -19,6 +19,7 @@ export function validSave(raw, level) {
     rescues,
     enemies,
     chests,
+    secrets: clean(raw.secrets, level.secrets || []),
     complete:
       raw.complete === true &&
       gems.length >= level.goal.gems &&
@@ -65,6 +66,7 @@ export class Simulation {
     this.rescued = new Set(v.rescues);
     this.defeated = new Set(v.enemies);
     this.broken = new Set(v.chests);
+    this.discovered = new Set(v.secrets);
     this.gems = level.gems.map((g) => ({
       ...g,
       active:
@@ -114,6 +116,7 @@ export class Simulation {
       rescues: [...this.rescued],
       enemies: [...this.defeated],
       chests: [...this.broken],
+      secrets: [...this.discovered],
       complete: this.complete,
     };
   }
@@ -265,6 +268,15 @@ export class Simulation {
         this.damage();
     }
     this.rescueNearby();
+    for (const secret of this.level.secrets || [])
+      if (
+        !this.discovered.has(secret.id) &&
+        Math.hypot(p.x - secret.x, p.z - secret.z) < secret.radius &&
+        Math.abs(p.y - secret.y) < 2
+      ) {
+        this.discovered.add(secret.id);
+        this.emit('secret', { ...secret });
+      }
     if (input.interactPressed || (input.interact && !this.interactHeld)) this.interact();
     this.interactHeld = !!input.interact;
   }
