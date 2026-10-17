@@ -1,6 +1,6 @@
 # World screenshot review
 
-Status: awaiting the user's visual approval. These are actual 844 × 390 phone-browser captures of the review build, with transient messages cleared.
+Status: approved by the user on 2026-10-17 (“Looks great.”). These are actual 844 × 390 phone-browser captures of the review build, with transient messages cleared.
 
 The three ground lands have continuous rolling hills, gently sloping paths and visible enclosing walls. Every destination is open from the start. Sunny Flight is a separate full-flight coastal course with untimed practice by default.
 
@@ -20,4 +20,4 @@ The three ground lands have continuous rolling hills, gently sloping paths and v
 
 ![Sunny Flight practice course](world-sunny-flight.png)
 
-Review notes and any requested changes will be recorded before this upgrade is called complete.
+The approved build is ready for publication; verification evidence is recorded in verification.md.

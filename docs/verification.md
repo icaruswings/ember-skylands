@@ -1,6 +1,6 @@
 # Worlds and flight review — 2026-10-17
 
-This upgrade is awaiting the user's requested screenshots and visual approval before completion/publication.
+The user approved all four screenshots on 2026-10-17 (“Looks great.”). This tested build is proceeding to publication.
 
 - 126 behavior tests across 21 isolated Node files pass; all authored JavaScript syntax checks pass. Coverage includes independent land saves and migration, bounded charge/jump/glide, full flight controls and targets, timers/retry, input cancellation, resource ownership and legacy terrain contracts.
 - Gentle rolling hills use one analytic height sampler for collision, terrain mesh, conforming path ribbons, grass, scenery and objectives. Tests check continuous gentle slopes, visible height variation, planted uphill/downhill charging, enemy ground contact and rendered vertex alignment.

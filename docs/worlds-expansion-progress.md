@@ -21,3 +21,5 @@ Tasks 3/4: complete — final hill-enabled phone integration passes all destinat
 Task 5: user screenshot approval pending; final capture and saving branch work in progress. No claim of completion or new public deployment until requested visual review.
 
 Final review artifacts: docs/worlds-approval.md and four actual phone screenshots, all captured from production code commit 36d5147 (no scene mutation or generated mockups). Normal npm test passes all 126 cases; dedicated native-release browser regression passes. Final capture budgets: Artisans 212 calls/191830 triangles; Peace Keepers 205/143612; Magic Crafters 208/157236; Sunny Flight 124/34274. Work is saved on broad-worlds-flight for visual review; public deployment remains pending approval.
+
+User approved the four screenshots (“Looks great.”). Visual approval is complete; proceeding with fast-forward merge, exact-source packaging and publication to the existing public Site.
