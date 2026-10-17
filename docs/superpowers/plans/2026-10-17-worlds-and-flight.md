@@ -73,7 +73,7 @@ Interfaces: World picker calls campaign travel; fixed-step update samples normal
 ### Task 5: Review and publication
 
 - [x] Request independent code review and resolve important findings.
-- [ ] Record actual verification evidence, research sources and hardware/browser limits.
+- [x] Record actual verification evidence, research sources and hardware/browser limits.
 - [ ] Commit and push the exact tested state to GitHub and Sites source; package from that commit.
 - [ ] Show screenshots of all four destinations and obtain the user’s requested visual approval.
 - [ ] Save and deploy the approved upgrade to the existing public Site, confirm success, and stop the goal with a concise handoff.
