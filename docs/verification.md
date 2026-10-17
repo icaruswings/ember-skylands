@@ -1,3 +1,18 @@
+# Distinct land layout validation — 2026-10-17
+
+The published polish release remains live as Sites v9 at commit 4b7549e. The distinct-layout work is on the separate distinct-land-loops branch pending the user's requested screenshot review.
+
+- All 155 automated cases across 26 isolated Node test files pass with the normal `npm test` command; authored JavaScript syntax checks and diff whitespace checks pass.
+- Each ground land has a different closed main circuit, optional branches, hill field, objective placement and themed solid scenery. Main paths are eight units wide; branches are 6.5. A movement-driven run traverses every circuit and branch using real chest/scenery collision, without jumps. Every main circuit reaches all three friends and enough gems for the medal without secret rewards.
+- All 76 old gem IDs, eight old chest IDs, twelve enemy IDs and three friend IDs per land remain valid. Each land now has 88 gems, ten chests and two optional discoveries. Old complete saves keep all progress while receiving twelve fresh secret pickups. Tests cover malformed/foreign/duplicate discovery IDs, above-roof exclusion, one-time discovery and campaign travel/replay persistence.
+- Grotto walls use the same dimensions/height as collision, with foundations buried below the hill and tops aligned to their roof. Reward and entrance clearance tests pass.
+- Final visual inspection caught floating orchard hedge foundations. A failing footprint-height regression reproduced it; garden and grove wall foundations now extend below their entire footprint. Grove walls also have matching collision, with the main/optional traversal suite still passing. The final full suite passes 155/155 and all pocket captures were regenerated.
+- Independent code review found no Critical, Important or Minor issues. Its additional continuous-charge navigation probe passed every circuit and branch. Navigation probes disable live enemies to isolate route clearance; actual campaign runs leave enemies active.
+- The full Chromium phone integration passes all four destinations, six ground scene switches, stable resources, native multitouch move/charge/release, full flight controls, pause/retry/timer, save/reload and portrait picker. Ground views: Artisans 215 calls/317,806 visible triangles; Peace Keepers 173/234,180; Magic Crafters 164/226,104 (budgets 450/400,000 in these scenarios).
+- Native phone touch charge through each grotto entrance passes with the real game UI: one secret toast, saved per-land discovery, released controls stopped, health intact and progress restored after reload. This browser fixture changes only declarative initial spawn to the entrance; it does not mutate live game state or discover secrets directly. Movement tests independently cover the entire route from the normal spawn.
+- The test-only game-renderer viewer passes approach/discovery checks for all six treasure pockets, including the open grove, camp and overlook; each emits one discovery and preserves health. Review captures include all three layout overviews, all six pocket close-ups, all four running-game phone destinations, three native-phone grotto discoveries and the portrait world picker. The overview camera extends its far plane to include the sky sphere from its higher position; gameplay camera settings are unchanged. See [the visual review](land-layouts-approval.md).
+- Software WebGL validates functionality and geometry complexity, not physical-phone frame rate. Physical iPhone/Android, Safari and hardware controllers remain untested.
+
 # Character/movement polish validation — 2026-10-17
 
 - All 142 behavior cases across 23 isolated Node files pass; npm test and all authored JavaScript syntax checks pass.
