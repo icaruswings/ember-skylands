@@ -1,4 +1,6 @@
-/** Authored adaptations of the first three homeworld themes. All main paths are level. */
+import { groundHeight } from '../engine/terrain.js';
+
+/** Broad homeworld valleys with gentle hills and continuous, forgiving routes. */
 const themes = [
   {
     id: 'artisans',
@@ -62,6 +64,15 @@ const chestPoints = [
   [16, -30],
 ];
 function makeLand(theme, index) {
+  const hills = [
+    { x: -24, z: 7, rx: 21, rz: 24, height: 3.8 },
+    { x: 26, z: -23, rx: 23, rz: 23, height: 4.2 },
+    { x: 30, z: 33, rx: 20, rz: 22, height: 2.8 },
+  ];
+  const surface = { bounds: { floorY: 0 }, hills };
+  const elevate = (item, offset = 0) => {
+    item.y = groundHeight(surface, item.x, item.z) + offset;
+  };
   const gems = [];
   for (let ray = 0; ray < 6; ray++)
     for (let i = 0; i < 8; i++) {
@@ -144,7 +155,19 @@ function makeLand(theme, index) {
     zone: theme.name,
     message: 'Thanks, little dragon! Every land is open. Keep charging and exploring.',
   }));
+  for (const item of [...chests, ...enemies, ...rescues, ...portals]) elevate(item);
+  for (const gem of gems) elevate(gem, 0.8);
+  const spawn = { x: 0, y: 0, z: 30 };
+  elevate(spawn);
+  const obstacles = [
+    { x: -43, z: 28, r: 2.5 },
+    { x: 43, z: 28, r: 2.5 },
+    { x: -45, z: -34, r: 2.5 },
+    { x: 45, z: -34, r: 2.5 },
+  ];
+  for (const obstacle of obstacles) elevate(obstacle);
   return {
+    hills,
     id: theme.id,
     name: theme.name,
     kind: 'ground',
@@ -166,19 +189,14 @@ function makeLand(theme, index) {
     bridges: [],
     ramps: [],
     platforms: [],
-    spawn: { x: 0, y: 0, z: 30 },
+    spawn,
     portal: portals[0],
     portals,
     gems,
     chests,
     enemies,
     rescues,
-    obstacles: [
-      { x: -43, z: 28, r: 2.5 },
-      { x: 43, z: 28, r: 2.5 },
-      { x: -45, z: -34, r: 2.5 },
-      { x: 45, z: -34, r: 2.5 },
-    ],
+    obstacles,
     paths: [
       [0, 38, 0, -45, 4.2],
       [-43, 0, 43, 0, 4],

@@ -1,4 +1,5 @@
 import * as T from '../assets/three.module.js';
+import { groundHeight } from '../engine/terrain.js';
 import { GrassField } from '../engine/grass-field.js';
 
 /** Curved ribbon tufts use instancing, wind, color gradients and a burn attribute. */
@@ -74,7 +75,7 @@ export function createGrass(root, level) {
     );
   };
   material.customProgramCacheKey = () => 'curved-burnable-grass-v1';
-  const paths = [
+  const paths = level.paths || [
     [0, 14, 0, -14, 1.95],
     [0, 3, 13, -7, 1.9],
     [0, 3, -14, -10, 1.9],
@@ -110,7 +111,12 @@ export function createGrass(root, level) {
         z = land.z + Math.cos(a) * r;
       } while (
         ++attempt < 80 &&
-        ((land.y === 0 && (onPath(x, z) || Math.hypot((x + 10) / 1.05, (z - 6) / 0.7) < 4.4)) ||
+        ((level.bounds &&
+          (x < level.bounds.minX + 2 ||
+            x > level.bounds.maxX - 2 ||
+            z < level.bounds.minZ + 2 ||
+            z > level.bounds.maxZ - 2)) ||
+          (land.y === 0 && (onPath(x, z) || Math.hypot((x + 10) / 1.05, (z - 6) / 0.7) < 4.4)) ||
           level.obstacles.some((o) =>
             o.r
               ? Math.hypot(x - o.x, z - o.z) < o.r + 0.5
@@ -118,9 +124,10 @@ export function createGrass(root, level) {
           ) ||
           level.rescues.some((r) => Math.hypot(x - r.x, z - r.z) < 1.6))
       );
-      points.push({ x, y: land.y, z });
+      const y = level.bounds ? groundHeight(level, x, z) : land.y;
+      points.push({ x, y, z });
       lookup.push({ m, index: i });
-      dummy.position.set(x, land.y + 0.025, z);
+      dummy.position.set(x, y + 0.025, z);
       dummy.rotation.y = rand() * Math.PI * 2;
       dummy.scale.setScalar(0.7 + rand() * 0.7);
       dummy.scale.y *= 0.65 + rand() * 0.4;

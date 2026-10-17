@@ -335,3 +335,46 @@ test('pointer-only touch input recovers when the browser reports contact has end
   window.emit('pointermove', { pointerId: 1, pointerType: 'touch', buttons: 0 });
   assert.equal(input.sample(0).x, 0);
 });
+
+test('flight loop and turnaround actions are buffered and gamepad shoulders fire once', () => {
+  const { input } = setup();
+  window.emit('keydown', { code: 'KeyL' });
+  window.emit('keyup', { code: 'KeyL' });
+  window.emit('keydown', { code: 'KeyR' });
+  window.emit('keyup', { code: 'KeyR' });
+  let state = input.sample(0);
+  assert.equal(state.loopPressed, true);
+  assert.equal(state.turnPressed, true);
+  state = input.sample(0);
+  assert.equal(state.loopPressed, false);
+  assert.equal(state.turnPressed, false);
+  const pad = {
+    connected: true,
+    axes: [0, 0, 0],
+    buttons: Array.from({ length: 12 }, () => ({ pressed: false })),
+  };
+  navigator.getGamepads = () => [pad];
+  pad.buttons[5].pressed = true;
+  pad.buttons[4].pressed = true;
+  state = input.sample(0);
+  assert.equal(state.loopPressed, true);
+  assert.equal(state.turnPressed, true);
+  state = input.sample(0);
+  assert.equal(state.loopPressed, false);
+  assert.equal(state.turnPressed, false);
+});
+
+test('paused controls leave dialog keyboard activation to the browser', () => {
+  const { input } = setup();
+  input.enabled = false;
+  let prevented = false;
+  window.emit('keydown', {
+    code: 'Space',
+    target: { tagName: 'BUTTON' },
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  assert.equal(prevented, false);
+  assert.equal(input.sample(0).jumpPressed, false);
+});

@@ -1,3 +1,5 @@
+import { createLandScene } from './land-scene.js';
+import { createFlightScene } from './flight-scene.js';
 import * as T from '../assets/three.module.js';
 import { mat, mesh, orb, block, texture, createDragon, createSentinel } from './assets.js';
 import { LEVEL } from './level.js';
@@ -7,7 +9,9 @@ import { createGrass } from './grass.js';
 import { createChest, gemGeometry } from './treasure.js';
 import { createExplorationScenery } from './exploration-scenery.js';
 /** Scene construction is separate from gameplay. All assets are original procedural art. */
-export function createWorld(scene) {
+export function createWorld(scene, level = LEVEL) {
+  if (level.kind === 'flight') return createFlightScene(scene, level);
+  if (level.bounds) return createLandScene(scene, level);
   const root = new T.Group();
   scene.add(root);
   const grass = texture('grass'),

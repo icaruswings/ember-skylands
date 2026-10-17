@@ -141,7 +141,7 @@ export class FireBreath {
       cos = Math.cos(player.angle);
     if (mouth) this.root.position.copy(mouth);
     else this.root.position.set(player.x + sin * 1.61, player.y + 1.21, player.z + cos * 1.61);
-    this.root.rotation.y = player.angle;
+    this.root.rotation.set(-(player.pitch || 0), player.angle, 0, 'YXZ');
     this.root.visible = breathing;
     const elapsed = 0.42 - player.flame;
     const strength = breathing ? Math.min(1, elapsed / 0.045 + 0.2, player.flame / 0.09) : 0;
@@ -151,7 +151,7 @@ export class FireBreath {
       m.uniforms.strength.value = strength * flicker;
     }
     this.root.children[2].visible = quality !== 'low';
-    this.root.scale.set(1, 1, 0.87 + Math.sin(time * 29) * 0.08);
+    this.root.scale.set(1, 1, (player.flying ? 2.3 : 0.87) + Math.sin(time * 29) * 0.08);
     this.light.position.set(player.x + sin * 2.5, player.y + 1.4, player.z + cos * 2.5);
     this.light.visible = quality !== 'low';
     this.light.intensity = strength * flicker * 5;

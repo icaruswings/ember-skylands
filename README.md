@@ -2,7 +2,9 @@
 
 [Play on Sites](https://ember-skylands.icaruswings138.chatgpt.site) · [Public source](https://github.com/icaruswings/ember-skylands)
 
-A small browser dragon collectathon with a classic purple dragon and artist-built Gnorcs. Run, charge, breathe fire, jump and glide across three connected garden realms and a secret glide garden. Approach emerald dragon statues to free friends and watch them dance. Collect 30 gems to open the castle portal; explore for all 94 gems, seven chests and six Gnorcs. The camera follows from behind at dragon height. Climb the west watchtower, leap and glide into the Hidden Garden, then take the return bridge back.
+A phone-friendly browser dragon collectathon with three broad ground lands: Artisans castle gardens, Peace Keepers desert training grounds and Magic Crafters crystal mountain valley. Gentle rolling hills, wide routes and visible perimeter walls let children charge around without precision ramps or cliff falls. Each land has 76 gems, eight chests, twelve enemies and three dragon friends. All destinations are open from the start.
+
+Sunny Flight adds a full-flight coastal course: fly through eight arches, and flame eight chests, eight moving train barrels and eight planes. Untimed practice is the default; an optional timed challenge awards bonus time per target. World layouts are authored adaptations of the original game's themes.
 
 Built in JavaScript using Three.js 0.180.0 for rendering. The application engine supplies deterministic physics, collisions, input, animated procedural models, pooled particles, event-driven scripts, gesture-gated synthesized music/effects and local saves. No server, external fonts, asset CDN, tracking or sign-in is required by the game itself. Sites hosting controls access to the published site.
 
@@ -28,19 +30,26 @@ Open http://localhost:4173. To deploy elsewhere, serve `dist/` as a static direc
 | Enter portal     | E near portal | Contextual Portal button | Y / △                 |
 | Look             | Drag scenery  | Drag scenery             | Right stick / L2 / R2 |
 | Recenter camera  | C             | Camera button            | R3                    |
-| Map              | M             | Map button               | —                     |
+| Worlds / map     | V / M         | Map button               | —                     |
 | Pause            | Escape        | Pause button             | —                     |
 
 Small joystick movements walk slowly; touch the pad anywhere to establish a neutral thumb position, then slide to move. Walking turns gradually and brakes quickly. Charging moves forward while held, even with a neutral stick, and steers in a wider arc. The camera stays steady while walking and running; use the camera button or C to recenter behind the dragon.
 
-Armored Gnorcs require a charge; large Gnorcs require flame. Thieves flee with shoulder sacks and glance over their shoulders. Giants raise an arm before striking, giving you time to flame them or retreat. Red gems lie in the grass; green gems emerge from defeated enemies and chests broken with flame or charge. Nearby gems pull toward the dragon. Rescues happen automatically, restore health and set your fall-recovery checkpoint. Fire shortens nearby grass and darkens its tips. The dragonfly follows smoothly and changes color with health. Blinking, breathing, galloping, charging, jumping and gliding use independently animated joints. Progress saves on this device, including collected gems, dragon friends, broken chests and defeated enemies; player position resets to the garden when reopening the game. Use Settings to reset it.
+Armored Gnorcs require a charge; large Gnorcs require flame. Giants wind up before striking. Nearby gems pull toward the dragon, and rescues restore health and set a checkpoint. Worlds lets you travel freely or reset enemies while keeping collected treasure and friends. Each land saves independently on this device; reopening returns to the last ground land. Old single-world saves migrate to the new campaign.
+
+In flight the dragon moves forward automatically. The stick steers and changes altitude; release it to level out. Push up to climb by default, or enable inverted pitch in Settings. Flame stays F / Flame / Circle. Jump becomes a loop (also L / R1), Charge becomes Boost, and R / Turn / L1 turns around. Retry starts a fresh attempt; pausing freezes the timer. Boost, automatic recovery and untimed practice are accessibility adaptations.
 
 Phones fill the viewport from the title screen. Tapping Play also requests native fullscreen where the browser supports it; unsupported or denied requests keep the same immersive layout. Settings are available on the title screen and through Pause. Game text cannot be selected, and controls suppress long-press menus. Safe-area spacing keeps controls clear of phone cutouts.
 
 ## Maintain
 
 - `dist/engine/simulation.js`: deterministic rendering-independent physics, gameplay state and safe script predicates.
-- `dist/engine/terrain.js`: overlapping floors, raised terraces, ramps and height-aware obstacles.
+- `dist/engine/terrain.js`: shared rolling-hill surface, legacy overlapping floors and height-aware obstacles.
+- `dist/engine/campaign.js`: independent per-land progress, migration and travel.
+- `dist/engine/flight.js`: full-flight motion, target tests and timed/practice attempts.
+- `dist/game/lands.js` and `flight-course.js`: authored ground and flight definitions.
+- `dist/game/land-scene.js`, `terrain-mesh.js` and `flight-scene.js`: active land geometry, paths and scenery.
+- `dist/game/scene-resources.js`: scene ownership and disposal without destroying shared assets.
 - `dist/engine/enemy-ai.js`: terrain-safe patrols, fleeing and giant attack phases.
 - `dist/game/companion.js`: animated dragonfly and health colors.
 - `dist/game/exploration-scenery.js`: watchtower, staircase landing and hidden garden scenery.
@@ -69,7 +78,7 @@ Phones fill the viewport from the title screen. Tapping Play also requests nativ
 - `dist/game/world.js`: world geometry and decorations.
 - `dist/main.js`: game state, scripts, HUD, dialogs and app integration.
 
-Add content in `level.js`, then add its visual representation in `world.js`. Save validation restricts identifiers to the declared level. Increment the save format if existing identifiers or save semantics change. Three.js is vendored so production requires no dependency fetch; see `dist/assets/THREE-LICENSE.txt`.
+Add ground content in `lands.js` and flight targets in `flight-course.js`; scene factories implement a common renderer adapter. `level.js` and the original world builder remain legacy regression fixtures. Save validation restricts identifiers to the declared level. Increment the save format if existing identifiers or save semantics change. Three.js is vendored so production requires no dependency fetch; see `dist/assets/THREE-LICENSE.txt`.
 
 ## Verify
 
@@ -81,18 +90,12 @@ npm run check
 The Node suite covers gameplay, a complete movement-driven adventure, touch edge cases, focus loss, forbidden gamepad access, persistence, scripts and fixed-step catch-up. Browser integration scripts require Python Playwright and Chromium, plus the local server:
 
 ```sh
-python tests/browser_smoke.py
-python tests/browser_mobile.py
+python tests/browser_worlds.py
 python tests/browser_input_release.py
-python tests/browser_progress.py
-python tests/browser_fire.py
-python tests/browser_assets.py
-python tests/browser_classic.py
-python tests/browser_next.py
 ```
 
-Browser tests use `/usr/bin/chromium` and software WebGL in headless mode. They test real input and rendered scenes. The final portal test restores a legal objective save before moving to the portal; the separate simulation adventure test reaches the objectives by moving through every bridge. See `docs/verification.md` for actual results and remaining physical-device limits.
+Browser tests use `/usr/bin/chromium` and software WebGL in headless mode. The current campaign scenario covers real multitouch movement/release, all destinations, GPU resource reuse, flight controls, pause/retry, timers, save/reload and portrait layout. Other browser scripts document historical island-world fixtures and may require adaptation to the new campaign. See `docs/verification.md` for actual results and physical-device limits.
 
 ## Original assets
 
-Models, textures, terrain, architecture, vegetation and sound are locally authored/generated. The dragon and Gnorcs now reference the visual silhouettes of Spyro and the original game's enemies; no extracted game model or original soundtrack is bundled. The game loads authored `.glb` models through the vendored Three.js glTF loader. Creature skins and tree materials use bundled image-generated textures with normal-map relief. See `docs/art-pipeline.md` for the pipeline, `docs/spyro-references.md` for visual research, and `docs/verification.md` for checks and limits. This three-realm recreation does not reproduce the retail game's complete campaign or exact level layouts.
+Models, textures, terrain, architecture, vegetation and sound are locally authored/generated. The dragon and Gnorcs now reference the visual silhouettes of Spyro and the original game's enemies; no extracted game model or original soundtrack is bundled. The game loads authored `.glb` models through the vendored Three.js glTF loader. Creature skins and tree materials use bundled image-generated textures with normal-map relief. See `docs/art-pipeline.md` for the pipeline, `docs/spyro-references.md` for visual research, and `docs/verification.md` for checks and limits. These four destinations do not reproduce the retail game's complete campaign or exact level layouts.

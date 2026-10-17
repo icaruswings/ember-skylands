@@ -75,3 +75,20 @@ test('effects remain bounded during a prolonged attack', () => {
   assert.equal(pool.position.length, 72);
   assert.ok([...pool.position].every(Number.isFinite));
 });
+
+test('flight flames follow pitch and inherit forward flight velocity', async () => {
+  const { FlamePool } = await import('../dist/engine/flame-pool.js');
+  const pool = new FlamePool(8, () => 0.5),
+    angle = Math.PI,
+    pitch = 0.5;
+  pool.update(
+    1 / 60,
+    { x: 0, y: 20, z: 0, angle, pitch, flying: true, vx: 0, vy: 7, vz: -14 },
+    true,
+    'high',
+    { x: 0, y: 21, z: -1 },
+  );
+  assert.ok(pool.activeCount > 0);
+  assert.ok(pool.velocity[1] > 10);
+  assert.ok(pool.velocity[2] < -20);
+});

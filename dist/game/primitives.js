@@ -13,6 +13,7 @@ export const mat = (color, extra = {}) => {
     return new T.MeshStandardMaterial({ color, roughness: 0.85, ...extra });
   if (!materials.has(color))
     materials.set(color, new T.MeshStandardMaterial({ color, roughness: 0.85 }));
+  materials.get(color).userData.shared = true;
   return materials.get(color);
 };
 export function mesh(geometry, material, parent, x = 0, y = 0, z = 0) {
@@ -26,6 +27,7 @@ export function mesh(geometry, material, parent, x = 0, y = 0, z = 0) {
 const sphere = new T.SphereGeometry(1, 12, 8),
   cone = new T.ConeGeometry(1, 1, 10),
   box = new T.BoxGeometry(1, 1, 1);
+for (const geometry of [sphere, cone, box]) geometry.userData.shared = true;
 export function orb(parent, material, x, y, z, sx, sy = sx, sz = sx) {
   const m = mesh(sphere, material, parent, x, y, z);
   m.scale.set(sx, sy, sz);

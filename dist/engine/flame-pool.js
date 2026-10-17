@@ -50,9 +50,13 @@ export class FlamePool {
       this.position[j] = mouth?.x ?? player.x + sin * 1.64;
       this.position[j + 1] = (mouth?.y ?? player.y + 1.21) + (this.random() - 0.5) * 0.12;
       this.position[j + 2] = mouth?.z ?? player.z + cos * 1.64;
-      this.velocity[j] = sin * speed + cos * sideways;
-      this.velocity[j + 1] = 0.35 + this.random() * 1.5;
-      this.velocity[j + 2] = cos * speed - sin * sideways;
+      const pitch = player.pitch || 0,
+        cp = Math.cos(pitch),
+        sp = Math.sin(pitch);
+      this.velocity[j] = sin * cp * speed + cos * sideways + (player.flying ? player.vx : 0);
+      this.velocity[j + 1] =
+        sp * speed + 0.35 + this.random() * 1.5 + (player.flying ? player.vy : 0);
+      this.velocity[j + 2] = cos * cp * speed - sin * sideways + (player.flying ? player.vz : 0);
       this.life[i] = this.duration[i] = 0.28 + this.random() * 0.22;
       this.heat[i] = 1;
       this.size[i] = 0.24;

@@ -1,8 +1,20 @@
+/** Continuous authored hills, shared by collision, scenery and the terrain mesh. */
+export function groundHeight(level, x, z) {
+  let y = level.bounds?.floorY ?? 0;
+  for (const h of level.hills || []) {
+    const r2 = ((x - h.x) / h.rx) ** 2 + ((z - h.z) / h.rz) ** 2;
+    y += h.height * Math.exp(-r2);
+  }
+  return y;
+}
+
 /** Walkable surfaces can overlap vertically; a ceiling selects the reachable floor. */
 export function terrainHeight(level, x, z, ceiling = Infinity) {
   if (level.bounds) {
     const b = level.bounds;
-    return x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ ? b.floorY : null;
+    return x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ
+      ? groundHeight(level, x, z)
+      : null;
   }
   let height = null;
   const consider = (y) => {

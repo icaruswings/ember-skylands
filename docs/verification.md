@@ -1,3 +1,18 @@
+# Worlds and flight review — 2026-10-17
+
+This upgrade is awaiting the user's requested screenshots and visual approval before completion/publication.
+
+- 126 behavior tests across 21 isolated Node files pass; all authored JavaScript syntax checks pass. Coverage includes independent land saves and migration, bounded charge/jump/glide, full flight controls and targets, timers/retry, input cancellation, resource ownership and legacy terrain contracts.
+- Gentle rolling hills use one analytic height sampler for collision, terrain mesh, conforming path ribbons, grass, scenery and objectives. Tests check continuous gentle slopes, visible height variation, planted uphill/downhill charging, enemy ground contact and rendered vertex alignment.
+- A movement-driven Sunny Flight playthrough completes all 32 targets in 76.75 simulated seconds using only bounded steering, pitch and flame. It does not teleport or collect targets directly, and requires no boundary recovery.
+- Independent review identified four invisible generic blockers. Matching low stone boulders now render at their exact centers/radii; the reviewer verified that resolves the finding and reported no remaining blocking findings.
+- The dedicated release regression also passes with all pointer release events deliberately suppressed: native touch end/cancel stops motion, independent joystick/charge fingers release in either order, resize clears holds, taps stay single, and mouse release works without pointer capture.
+- Actual Chromium phone integration passed before the hill addition: all four destinations, six ground scene switches with stable geometry/texture counts, real multitouch move/charge/release, flight climb/fire/loop/turn, pause/retry/timer, save/reload and portrait world selection. The final hill-enabled rerun also passed all these checks with no browser errors. Ground views used 205–212 draw calls and 143,036–191,254 triangles; geometry counts remained 147–154 across six switches. Final exact-state approval captures are recorded separately.
+
+Physical iPhone/Android hardware, Safari and a physical controller remain untested. Software WebGL checks geometry and functional behavior; it cannot establish physical-phone frame rates.
+
+The records below are historical checks of the former connected-island world, retained for provenance.
+
 # Current upgrade validation — 2026-10-16
 
 - 76 behavior cases across 15 isolated Node files pass, plus application syntax checks. New coverage includes route traversal from the normal spawn, raised-floor landing, giant windup/interruption/recovery, articulated character poses/blinking/shoulder glances, actual-mouth fire attachment, companion following/health/pause, and distance-based grass detail.

@@ -1,47 +1,41 @@
-import { Simulation, FixedClock, ScriptSystem } from './engine/simulation.js';
+import { FixedClock, ScriptSystem } from './engine/simulation.js';
+import { Campaign } from './engine/campaign.js';
 import { GameRenderer } from './engine/renderer.js';
 import { Input } from './engine/input.js';
 import { AudioEngine } from './engine/audio.js';
 import { enterFullscreen, protectGameGestures } from './engine/display.js';
 import { readSave, writeSave, clearSave, readSettings, writeSettings } from './engine/storage.js';
-import { LEVEL } from './game/level.js';
+import { LANDS } from './game/lands.js';
+import { FLIGHT_COURSE } from './game/flight-course.js';
+import { drawWorldMap } from './ui/world-map.js';
 import { loadArtTextures } from './game/surfaces.js';
 import { loadModelFiles } from './engine/models.js';
 const $ = (id) => document.getElementById(id),
   icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
-let sim = new Simulation(LEVEL, readSave()),
+let campaign = new Campaign(readSave()),
+  sim = campaign.simulation,
   mode = 'intro',
   dialogReturn = 'intro',
   previousFocus = null,
+  render = null,
   toastTimer = 0,
   saveWarning = false,
-  render = null;
+  scriptSystem;
 const clock = new FixedClock(),
   audio = new AudioEngine(),
-  settings = {
-    sound: true,
-    quality: matchMedia('(pointer:coarse)').matches ? 'low' : 'high',
-    ...readSettings(),
-  };
+  input = new Input($('game'));
+const settings = {
+  sound: true,
+  quality: matchMedia('(pointer:coarse)').matches ? 'low' : 'high',
+  flightInverted: false,
+  ...readSettings(),
+};
 audio.setEnabled(settings.sound !== false);
-const input = new Input($('game'));
+input.enabled = false;
 protectGameGestures($('stage'));
-let scriptSystem;
-function scripts() {
-  scriptSystem = new ScriptSystem([
-    {
-      id: 'welcome',
-      when: (s) => s.rescued.size === 1,
-      run: () => {},
-    },
-    {
-      id: 'unlocked',
-      when: (s) => s.unlocked,
-      run: () => toast('The castle portal is open! Return to the castle.'),
-    },
-  ]);
-}
-scripts();
+const flight = () => sim.level.kind === 'flight';
+const seconds = (value) =>
+  `${Math.floor(Math.max(0, value) / 60)}:${String(Math.floor(Math.max(0, value) % 60)).padStart(2, '0')}`;
 function toast(message) {
   $('toast').textContent = message;
   $('toast').classList.remove('hidden');
@@ -49,35 +43,49 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 4200);
 }
 function save() {
-  if (!writeSave(sim.save()) && !saveWarning) {
+  if (!writeSave(campaign.save()) && !saveWarning) {
     saveWarning = true;
-    toast('Saving is unavailable in this browser. You can keep playing this session.');
+    toast('Saving is unavailable. You can keep playing this session.');
     $('save-status').textContent = '● Playing without local saves';
   }
 }
+function scripts() {
+  scriptSystem = new ScriptSystem([
+    {
+      id: 'all-enemies',
+      when: (s) => !flight() && s.defeated.size === s.level.enemies.length,
+      run: () => toast('Every Gnorc here is defeated! Open Worlds to play them again.'),
+    },
+    {
+      id: 'land-complete',
+      when: (s) => !flight() && s.unlocked && !s.complete,
+      run: (s) => {
+        s.complete = true;
+        save();
+        toast(`${s.level.name} explored! Every other world is open too.`);
+      },
+    },
+  ]);
+}
+scripts();
 function setMode(next) {
   mode = next;
-  $('stage').classList.toggle('intro-scene', next === 'intro');
   input.clear();
-  clock.reset();
+  input.enabled = next === 'playing';
   input.lookEnabled = next === 'playing';
+  clock.reset();
   audio.pause(next !== 'playing');
+  $('stage').classList.toggle('intro-scene', next === 'intro');
   $('intro').classList.toggle('hidden', next !== 'intro');
   $('playing-ui').classList.toggle('hidden', next === 'intro');
   $('adventure-tab').classList.toggle('active', next !== 'dialog');
 }
 function start() {
   if (!render) return;
-  if (matchMedia('(pointer: coarse), (max-width: 700px)').matches) {
-    void enterFullscreen($('stage'));
-  }
+  if (matchMedia('(pointer:coarse),(max-width:700px)').matches) void enterFullscreen($('stage'));
   setMode('playing');
   audio.start();
-  toast(
-    sim.collected.size
-      ? 'Welcome back, little dragon. Your adventure continues.'
-      : 'Follow the red gems. Break chests, chase Gnorcs, and free the stone dragons.',
-  );
+  toast('Wide open lands. Charge, breathe fire, and explore. Every world is open.');
 }
 function openDialog(content) {
   previousFocus = document.activeElement;
@@ -93,15 +101,44 @@ function closeDialog() {
   setMode(dialogReturn);
   if (previousFocus?.isConnected) previousFocus.focus();
 }
+function enterLand(id, options = {}) {
+  if (!render) return;
+  const previous = campaign.landId;
+  input.clear();
+  clock.reset();
+  campaign.travel(id, { inverted: !!settings.flightInverted, ...options });
+  sim = campaign.simulation;
+  if (previous === id) render.resetAdventure();
+  else render.loadLevel(sim.level);
+  scripts();
+  $('dialog-layer').classList.add('hidden');
+  setMode('playing');
+  audio.start();
+  save();
+  updateHUD();
+  toast(
+    flight()
+      ? `${sim.timed ? 'Timed challenge' : 'Practice flight'} · stick to turn and climb · flame the targets.`
+      : `${sim.level.name} · room to charge. Open Worlds whenever you want to travel.`,
+  );
+}
+function retryFlight() {
+  if (flight()) enterLand('sunny-flight', { timed: sim.timed });
+}
 function guide() {
   openDialog(
-    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">A little field guide.</h2><p>You’re Ember, a curious young dragon. The dragon kingdom has lost its light. Free Sol, Fern and Luma from their emerald statues, gather 30 gems, and return to the castle portal.</p><div class="guide-grid"><div class="guide-item"><strong>Find your feet</strong><p>Use <kbd>W A S D</kbd>, arrows, the touch stick or gamepad to move. Drag the scenery to look around; press C or the camera button to look behind Ember. Small thumb movements walk slowly.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>Press <kbd>SPACE</kbd> or Jump once to leap, then again in the air to glide. Tap again to fold your wings.</p></div><div class="guide-item"><strong>A little firepower</strong><p><kbd>F</kbd> breathes flame. Hold <kbd>SHIFT</kbd> to charge. Armored Gnorcs need a charge; large ones need flame. When a giant raises its arm, flame it or step back before it strikes. Flame or charge wooden chests for green treasure.</p></div><div class="guide-item"><strong>Make a new friend</strong><p>Walk close to a stone dragon and watch them break free and dance. Each rescue heals you and sets a checkpoint.</p></div></div><p>Cross the wooden bridges to Willow Hollow and Dragon Heights. Follow the red gems up the west watchtower, jump and glide into the Hidden Garden, then tap Jump again to fold your wings and land. Your dragonfly changes from gold to blue to green as health drops. Red gems pull toward you. Chase the sack-carrying Gnorcs for green gems. If you fall, you return safely to your last checkpoint. Gamepad: A / ✕ jump, X / □ charge, B / ○ flame, Y / △ portal. R3 recenters the camera; L2 / R2 rotate it.</p><button id="guide-done" class="primary-button">Got it. Let’s wander ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">THE EXPLORER’S COMPANION</span><h2 id="dialog-title">Room to be a dragon.</h2><p>Run through the castle gardens of Artisans, the desert forts of Peace Keepers and the crystal valley of Magic Crafters. Broad paths and enclosing walls keep the adventure on solid ground. Every destination is open from the start.</p><div class="guide-grid"><div class="guide-item"><strong>Run and charge</strong><p>Use WASD, arrows, the touch stick or a gamepad. Hold Shift / Charge / Square to run with your horns down. Release it before a tight turn. Drag the scenery to look, or press C to recenter.</p></div><div class="guide-item"><strong>Fight and explore</strong><p>F / Flame / Circle breathes fire. Charge armored Gnorcs; flame the big ones. Break wooden chests for treasure. Walk close to a stone dragon to free a friend and heal. Worlds lets you replay the bad guys without erasing treasure.</p></div><div class="guide-item"><strong>Spread your wings</strong><p>On land, Space / Jump / Cross jumps, then opens or folds your glide. In Sunny Flight you fly automatically. The stick turns and climbs; Flame breaks targets. Loop does a flip; Turn brings you around. Boost gives extra speed.</p></div><div class="guide-item"><strong>Make it your flight</strong><p>Practice has no time limit. The timed challenge adds three seconds per target. Fly through eight arches and flame eight chests, eight train barrels and eight planes. Up climbs by default; Settings offers classic inverted flight.</p></div></div><p>Flight keyboard: WASD / arrows steer, F flames, Space or L loops, R turns around, Shift boosts. Gamepad: Circle / B flame, Cross / A or R1 loop, L1 turn, Square / X boost. Pausing freezes the flight clock.</p><button id="guide-done" class="primary-button">Let’s explore ${icon('arrow')}</button>`,
   );
   $('guide-done').onclick = closeDialog;
 }
+function setInversion(value) {
+  settings.flightInverted = !!value;
+  if (flight()) sim.inverted = !!value;
+  writeSettings(settings);
+}
 function openSettings() {
   openDialog(
-    `<span class="dialog-eyebrow">MAKE YOURSELF AT HOME</span><h2 id="dialog-title">Your adventure, your way.</h2><div class="settings-row"><span>Music & sound<small>An original, gentle Skylands soundtrack</small></span><button id="audio-toggle" class="toggle" role="switch" aria-label="Music and sound" aria-checked="${audio.enabled}"></button></div><div class="settings-row"><span>Visual quality<small>Balanced keeps things light on phones</small></span><select id="quality-select" aria-label="Visual quality"><option value="high" ${settings.quality === 'high' ? 'selected' : ''}>Rich · shadows</option><option value="low" ${settings.quality === 'low' ? 'selected' : ''}>Balanced · mobile</option></select></div><div class="settings-row"><span>Saved adventure<small>${sim.collected.size} gems · ${sim.rescued.size} spirits · stored on this device</small></span><button id="reset-button" class="text-button">Start fresh</button></div><p>Landscape gives you more room to explore on a phone. Sound begins when you start playing. Your progress stays in this browser.</p><button id="settings-done" class="primary-button">Back to the Skylands ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">YOUR ADVENTURE, YOUR WAY</span><h2 id="dialog-title">Make yourself at home.</h2><div class="settings-row"><span>Music & sound<small>An original Skylands soundtrack</small></span><button id="audio-toggle" class="toggle" role="switch" aria-label="Music and sound" aria-checked="${audio.enabled}"></button></div><div class="settings-row"><span>Visual quality<small>Balanced keeps things light on phones</small></span><select id="quality-select" aria-label="Visual quality"><option value="high" ${settings.quality === 'high' ? 'selected' : ''}>Rich · shadows</option><option value="low" ${settings.quality === 'low' ? 'selected' : ''}>Balanced · mobile</option></select></div><div class="settings-row"><span>Classic inverted flight<small>${settings.flightInverted ? 'Pull down to climb' : 'Push up to climb · easier for little dragons'}</small></span><button id="flight-invert-toggle" class="toggle" role="switch" aria-label="Classic inverted flight" aria-checked="${!!settings.flightInverted}"></button></div><div class="settings-row"><span>Saved adventure<small>All three lands and flight records stay on this device</small></span><button id="reset-button" class="text-button">Start fresh</button></div><button id="settings-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
   );
   $('audio-toggle').onclick = () => {
     toggleSound();
@@ -112,21 +149,26 @@ function openSettings() {
     render.setQuality(settings.quality);
     writeSettings(settings);
   };
+  $('flight-invert-toggle').onclick = () => {
+    setInversion(!settings.flightInverted);
+    $('flight-invert-toggle').setAttribute('aria-checked', !!settings.flightInverted);
+  };
   $('settings-done').onclick = closeDialog;
   $('reset-button').onclick = () => {
     openDialog(
-      `<span class="dialog-eyebrow">A NEW BEGINNING</span><h2 id="dialog-title">Start a fresh adventure?</h2><p>This clears the gems, chests, dragon friends and Gnorcs saved on this device.</p><div class="dialog-actions"><button id="confirm-reset" class="primary-button">Start fresh</button><button id="cancel-reset" class="secondary-button">Keep my adventure</button></div>`,
+      `<span class="dialog-eyebrow">A NEW BEGINNING</span><h2 id="dialog-title">Start a fresh adventure?</h2><p>This clears treasure, friends, defeated Gnorcs and flight records from all three lands on this device.</p><div class="dialog-actions"><button id="confirm-reset" class="primary-button">Start fresh</button><button id="cancel-reset" class="secondary-button">Keep my adventure</button></div>`,
     );
     $('cancel-reset').onclick = openSettings;
     $('confirm-reset').onclick = () => {
       clearSave();
-      sim = new Simulation(LEVEL);
-      render.resetAdventure();
+      campaign = new Campaign();
+      sim = campaign.simulation;
+      render.loadLevel(sim.level);
       scripts();
       dialogReturn = 'intro';
-      $('start-button').innerHTML = `Let’s explore ${icon('arrow')}`;
-      $('continue-note').textContent = 'Made for your browser. Built for adventure.';
       closeDialog();
+      $('start-button').innerHTML = `Let’s explore ${icon('arrow')}`;
+      $('continue-note').textContent = 'Three lands and a whole sky to explore.';
       updateHUD();
     };
   };
@@ -147,154 +189,136 @@ function pause() {
     return;
   }
   openDialog(
-    `<span class="dialog-eyebrow">TAKE A LITTLE BREATHER</span><h2 id="dialog-title">The Skylands can wait.</h2><p>Your adventure is saved. Ready when you are.</p><div class="dialog-actions"><button id="resume-button" class="primary-button">Keep exploring ${icon('arrow')}</button><button id="pause-guide" class="secondary-button">Field guide</button><button id="pause-settings" class="secondary-button">Settings</button></div>`,
+    `<span class="dialog-eyebrow">TAKE A LITTLE BREATHER</span><h2 id="dialog-title">The adventure can wait.</h2><p>${flight() ? 'Your flight is paused. The clock is stopped.' : 'Your adventure is saved. Ready when you are.'}</p><div class="dialog-actions"><button id="resume-button" class="primary-button">Keep exploring ${icon('arrow')}</button><button id="pause-worlds" class="secondary-button">Worlds</button><button id="pause-guide" class="secondary-button">Field guide</button><button id="pause-settings" class="secondary-button">Settings</button></div>`,
   );
   $('resume-button').onclick = closeDialog;
+  $('pause-worlds').onclick = () => worlds();
   $('pause-guide').onclick = guide;
   $('pause-settings').onclick = openSettings;
   save();
 }
-function drawMap(canvas, big = false) {
-  const c = canvas.getContext('2d'),
-    w = canvas.width,
-    h = canvas.height,
-    scale = big ? 3.5 : 1.38,
-    ox = w * 0.51,
-    oy = h * 0.73;
-  c.clearRect(0, 0, w, h);
-  const pos = (x, z) => [ox + x * scale, oy + z * scale * 0.83];
-  c.strokeStyle = '#bfa575';
-  c.lineWidth = big ? 9 : 4;
-  for (const b of [...LEVEL.bridges, ...LEVEL.ramps]) {
-    c.beginPath();
-    c.moveTo(...pos(b.ax, b.az));
-    c.lineTo(...pos(b.bx, b.bz));
-    c.stroke();
-  }
-  for (const island of LEVEL.islands) {
-    const [x, z] = pos(island.x, island.z);
-    c.fillStyle = island.id === 'crown' ? '#c1ceb0' : '#c3d59f';
-    c.beginPath();
-    c.ellipse(x, z, island.r * scale, island.r * scale * 0.83, 0, 0, 7);
-    c.fill();
-    c.strokeStyle = '#a5b889';
-    c.lineWidth = 1;
-    c.stroke();
-    if (big) {
-      c.fillStyle = '#5d7653';
-      c.font = '12px Georgia';
-      c.textAlign = 'center';
-      c.fillText(island.name, x, z + island.r * scale * 0.55);
-    }
-  }
-  for (const g of sim.gems)
-    if (g.active && !sim.collected.has(g.id)) {
-      const [x, z] = pos(g.x, g.z);
-      c.fillStyle = g.source ? '#39a657' : '#d44b55';
-      c.fillRect(x - 1, z - 1, big ? 3 : 1.5, big ? 3 : 1.5);
-    }
-  for (const r of LEVEL.rescues) {
-    const [x, z] = pos(r.x, r.z);
-    c.fillStyle = sim.rescued.has(r.id) ? '#749865' : '#a977ab';
-    c.beginPath();
-    c.arc(x, z, big ? 5 : 3, 0, 7);
-    c.fill();
-    if (big) {
-      c.fillStyle = '#697353';
-      c.font = '10px Arial';
-      c.fillText(r.name, x, z - 10);
-    }
-  }
-  const [gx, gz] = pos(LEVEL.portal.x, LEVEL.portal.z);
-  c.strokeStyle = sim.unlocked ? '#497f6b' : '#909b83';
-  c.lineWidth = 2;
-  c.strokeRect(gx - 3, gz - 3, 6, 6);
-  const [px, pz] = pos(sim.player.x, sim.player.z);
-  c.save();
-  c.translate(px, pz);
-  c.rotate(-sim.player.angle);
-  c.fillStyle = '#8651ba';
-  c.beginPath();
-  c.moveTo(0, 6);
-  c.lineTo(-4, -4);
-  c.lineTo(4, -4);
-  c.closePath();
-  c.fill();
-  c.restore();
-}
-function map() {
-  const status = (island) => {
-    const rescue = LEVEL.rescues.find((r) => r.zone === island.name);
-    return rescue
-      ? sim.rescued.has(rescue.id)
-        ? 'Dragon freed'
-        : 'Find ' + rescue.name
-      : 'Watchtower glide route';
-  };
+function worlds(withMap = false) {
+  campaign.recordCurrent();
+  const cards = LANDS.map((land) => {
+    const s = campaign.worlds[land.id];
+    return `<button class="world-card ${land.id === campaign.landId ? 'current' : ''}" data-land="${land.id}"><strong>${land.name}</strong><small>${land.description}</small><span class="world-progress">${s.gems.length} / ${land.gems.length} gems · ${s.rescues.length} / 3 friends · ${s.enemies.length} / ${land.enemies.length} Gnorcs</span></button>`;
+  }).join('');
   openDialog(
-    `<span class="dialog-eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="dialog-title">The Skylands.</h2><canvas id="big-map" class="big-map" width="600" height="340" aria-label="Map of the realms, hidden garden and your position"></canvas>${LEVEL.islands.map((island) => `<div class="realm-row"><strong>${island.name}</strong><span>${LEVEL.gems.filter((g) => g.zone === island.id && sim.collected.has(g.id)).length} / ${LEVEL.gems.filter((g) => g.zone === island.id).length} gems</span><em>${status(island)}</em></div>`).join('')}<p>Purple arrow: you · emerald dots: dragon friends · red/green dots: gems · square: home portal</p><button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
+    `<span class="dialog-eyebrow">EVERY WORLD IS OPEN</span><h2 id="dialog-title">${withMap ? sim.level.name : 'Choose a world.'}</h2>${withMap ? '<canvas id="big-map" class="big-map" width="600" height="240" aria-label="Current world map"></canvas>' : '<p>Big places to run. New places to explore. Go wherever you like.</p>'}<div class="world-grid">${cards}<div class="world-card flight-card"><strong>Sunny Flight</strong><small>Arches, chests, train barrels and planes. Practise freely or race the clock.</small><span class="world-progress">${campaign.flightRecord.bestTime ? `Best: ${seconds(campaign.flightRecord.bestTime)} · ` : ''}${campaign.flightRecord.completed} completed flights</span><div class="dialog-actions"><button id="flight-practice" class="primary-button">Practise flying</button><button id="flight-timed" class="secondary-button">Timed challenge</button></div></div></div><p class="flight-tip">Flight: push up to climb, sideways to turn. Flame targets; fly through arches. Practice has no countdown. Change flight inversion in Settings.</p>${!flight() ? '<button id="replay-enemies" class="secondary-button">Play the bad guys again</button>' : ''}<button id="map-done" class="primary-button">Back to exploring ${icon('arrow')}</button>`,
   );
-  drawMap($('big-map'), true);
+  for (const button of document.querySelectorAll('[data-land]'))
+    button.onclick = () => enterLand(button.dataset.land);
+  $('flight-practice').onclick = () => enterLand('sunny-flight', { timed: false });
+  $('flight-timed').onclick = () => enterLand('sunny-flight', { timed: true });
   $('map-done').onclick = closeDialog;
+  if ($('replay-enemies'))
+    $('replay-enemies').onclick = () => {
+      campaign.resetEnemies();
+      sim = campaign.simulation;
+      render.resetAdventure();
+      scripts();
+      dialogReturn = 'playing';
+      closeDialog();
+      save();
+      updateHUD();
+      toast('The bad guys are back. Your treasure and friends are safe.');
+    };
+  if (withMap) drawWorldMap($('big-map'), sim, true);
+}
+function flightResult() {
+  save();
+  const success = sim.result === 'complete';
+  openDialog(
+    `<span class="dialog-eyebrow">${sim.timed ? 'SUNNY FLIGHT CHALLENGE' : 'PRACTICE FLIGHT'}</span><h2 id="dialog-title">${success ? 'Every target. Brilliant flying!' : 'A little more practice?'}</h2><p>${sim.collectedTargets.size} / 32 targets · ${seconds(sim.time)} flying${success && sim.timed ? ' · Flight record saved.' : ''}</p><div class="dialog-actions"><button id="flight-retry" class="primary-button">Fly again ${icon('arrow')}</button><button id="flight-free-practice" class="secondary-button">Untimed practice</button><button id="flight-return" class="secondary-button">Back to ${LANDS.find((l) => l.id === campaign.lastGroundLand).name}</button></div>`,
+  );
+  $('flight-retry').onclick = retryFlight;
+  $('flight-free-practice').onclick = () => enterLand('sunny-flight', { timed: false });
+  $('flight-return').onclick = () => enterLand(campaign.lastGroundLand);
 }
 function events() {
   for (const e of sim.drain()) {
-    audio.effect(e.type, e.x ? (e.x - sim.player.x) / 12 : 0);
-    if (['gem', 'enemy', 'rescue', 'chest'].includes(e.type)) {
+    audio.effect(
+      e.type === 'flight-target' ? 'gem' : e.type === 'flight-complete' ? 'complete' : e.type,
+      e.x ? (e.x - sim.player.x) / 12 : 0,
+    );
+    if (['gem', 'enemy', 'rescue', 'chest', 'flight-target'].includes(e.type)) {
       render.burst(e);
-      save();
+      if (e.type !== 'flight-target') save();
     }
-    if (e.type === 'rescue') toast(`${e.name} is free! ${e.message} Checkpoint saved.`);
-    if (e.type === 'locked')
-      toast(
-        `The portal needs ${Math.max(0, 3 - sim.rescued.size)} more spirits and ${Math.max(0, 30 - sim.collected.size)} more gems.`,
-      );
-    if (e.type === 'respawn') toast('A soft landing. Back at your last checkpoint.');
-    if (e.type === 'complete') {
-      save();
-      openDialog(
-        `<span class="dialog-eyebrow">THE SKYLANDS SHINE AGAIN</span><h2 id="dialog-title">Little dragon. Big hero.</h2><p>Sol, Fern and Luma are free. The kingdom’s light has returned, and the way home is open. There’s always a little more wonder to find.</p><div class="results"><div><strong>${sim.collected.size} / ${LEVEL.gems.length}</strong><span>GEMS DISCOVERED</span></div><div><strong>3 / 3</strong><span>SPIRITS FREED</span></div><div><strong>${sim.defeated.size} / 6</strong><span>GNORCS</span></div></div><button id="win-continue" class="primary-button">Keep discovering ${icon('arrow')}</button>`,
-      );
-      $('win-continue').onclick = closeDialog;
+    if (e.type === 'rescue') toast(`${e.name} is free! Health restored. Checkpoint saved.`);
+    if (e.type === 'respawn') toast('Back on your feet. Your treasure is safe.');
+    if (e.type === 'travel') {
+      if (e.destination === 'sunny-flight') worlds();
+      else enterLand(e.destination);
+      break;
+    }
+    if (e.type === 'flight-recover') toast('Wings up! Keep flying — your targets are safe.');
+    if (e.type === 'flight-complete' || e.type === 'flight-timeout') {
+      flightResult();
+      break;
     }
   }
 }
 function updateHUD() {
-  const p = sim.player;
-  $('gem-count').textContent = sim.collected.size;
-  $('gem-total').textContent = '/ ' + LEVEL.gems.length;
-  $('rescue-count').textContent = sim.rescued.size;
+  const p = sim.player,
+    isFlight = flight(),
+    level = sim.level,
+    targets = isFlight ? sim.collectedTargets.size : 0;
+  $('stage').classList.toggle('flight-mode', isFlight);
+  $('zone-name').textContent = level.name;
+  document.querySelector('.zone-tag').textContent = isFlight
+    ? 'FLYING CHALLENGE'
+    : level.theme.subtitle.toUpperCase();
+  $('gem-count').textContent = isFlight ? targets : sim.collected.size;
+  $('gem-total').textContent = '/ ' + (isFlight ? 32 : level.gems.length);
+  $('rescue-count').textContent = isFlight
+    ? ['arch', 'chest', 'barrel', 'plane'].filter(
+        (kind) =>
+          sim.targets.filter((t) => t.kind === kind && sim.collectedTargets.has(t.id)).length === 8,
+      ).length
+    : sim.rescued.size;
+  $('rescue-total').textContent = isFlight ? '/ 4' : '/ 3';
   $('health').setAttribute('aria-label', `${p.health} health`);
   [...$('health').children].forEach((e, i) => e.classList.toggle('lost', i >= p.health));
-  const island = LEVEL.islands.find((i) => Math.hypot(p.x - i.x, p.z - i.z) < i.r);
-  if (island) {
-    $('zone-name').textContent = island.name;
-    document.querySelector('.zone-tag').textContent =
-      island.id === 'secret'
-        ? 'SECRET GARDEN'
-        : `REALM ${String(LEVEL.islands.indexOf(island) + 1).padStart(2, '0')}`;
+  $('flight-counts').classList.toggle('hidden', !isFlight);
+  if (isFlight) {
+    $('quest-title').textContent = sim.timed
+      ? `${seconds(sim.remaining)} remaining`
+      : 'Practice · no time limit';
+    $('quest-copy').textContent = 'Fly through arches. Flame everything else.';
+    $('flight-counts').innerHTML = ['arch', 'chest', 'barrel', 'plane']
+      .map(
+        (kind, i) =>
+          `<span>${['Arches', 'Chests', 'Barrels', 'Planes'][i]} <b>${sim.targets.filter((t) => t.kind === kind && sim.collectedTargets.has(t.id)).length}/8</b></span>`,
+      )
+      .join('');
+    $('quest-progress').style.width = `${(targets / 32) * 100}%`;
+  } else {
+    $('quest-title').textContent = sim.complete ? `${level.name} explored` : 'Room to be a dragon';
+    $('quest-copy').textContent =
+      `${level.enemies.length - sim.defeated.size} Gnorcs · ${3 - sim.rescued.size} friends to find · ${Math.max(0, 30 - sim.collected.size)} gems to your medal`;
+    $('quest-progress').style.width =
+      `${Math.min(100, (Math.min(sim.collected.size, 30) / 30 + sim.rescued.size / 3) * 50)}%`;
   }
-  $('quest-progress').style.width =
-    `${Math.min(100, (Math.min(sim.collected.size, 30) / 30 + sim.rescued.size / 3) * 50)}%`;
-  $('quest-title').textContent = sim.complete
-    ? 'A world worth wandering'
-    : sim.unlocked
-      ? 'The way home is open'
-      : 'Bring the Skylands back to life';
-  $('quest-copy').textContent = sim.complete
-    ? 'Find every gem. Follow every possibility.'
-    : sim.unlocked
-      ? 'Return to the portal at the meadow castle.'
-      : `Free ${3 - sim.rescued.size} dragon friends · Find ${Math.max(0, 30 - sim.collected.size)} more gems`;
   const near = sim.nearestInteraction();
   $('interaction-prompt').classList.toggle('hidden', !near);
-  $('interaction-prompt').innerHTML = near
-    ? `${matchMedia('(pointer:coarse)').matches ? 'Tap' : 'Press <kbd>E</kbd> to'} ${near.portal ? (sim.unlocked ? 'journey home' : 'visit the portal') : 'free ' + near.name}`
-    : '';
-  const tb = document.querySelector('[data-action="interact"]');
-  tb.classList.toggle('hidden', !near);
-  tb.querySelector('span').textContent = near?.portal ? 'Portal' : 'Rescue';
-  drawMap($('minimap'));
+  $('interaction-prompt').innerHTML = near ? `Visit ${near.name} ${icon('arrow')}` : '';
+  const action = document.querySelector('[data-action="interact"]');
+  action.classList.toggle('hidden', !near);
+  action.querySelector('span').textContent = 'Travel';
+  const jump = document.querySelector('[data-action="jump"]'),
+    charge = document.querySelector('[data-action="charge"]');
+  jump.querySelector('span').textContent = isFlight ? 'Loop' : 'Jump';
+  jump.setAttribute('aria-label', isFlight ? 'Loop in flight' : 'Jump or glide');
+  charge.querySelector('span').textContent = isFlight ? 'Boost' : 'Charge';
+  charge.setAttribute('aria-label', isFlight ? 'Boost in flight' : 'Charge');
+  document.querySelector('[data-action="turn"]').classList.toggle('hidden', !isFlight);
+  $('retry-flight-button').classList.toggle('hidden', !isFlight);
+  $('joystick').setAttribute('aria-label', isFlight ? 'Turn and climb joystick' : 'Move joystick');
+  $('desktop-controls').innerHTML = isFlight
+    ? '<span><kbd>W A S D</kbd> Turn / climb</span><span><kbd>F</kbd> Flame</span><span><kbd>SPACE</kbd> Loop</span><span><kbd>R</kbd> Turn around</span><span><kbd>SHIFT</kbd> Boost</span>'
+    : '<span><kbd>W A S D</kbd> Move</span><span><kbd>SPACE</kbd> Jump / glide</span><span><kbd>SHIFT</kbd> Charge</span><span><kbd>F</kbd> Flame</span><span class="camera-hint">Drag to look · C recenter</span>';
+  drawWorldMap($('minimap'), sim);
 }
 $('start-button').onclick = start;
 $('guide-tab').onclick = guide;
@@ -302,8 +326,10 @@ $('settings-button').onclick = openSettings;
 $('mobile-settings-button').onclick = openSettings;
 $('sound-button').onclick = toggleSound;
 $('pause-button').onclick = pause;
-$('map-button').onclick = map;
+$('map-button').onclick = () => worlds(true);
+$('worlds-button').onclick = () => worlds();
 $('dialog-close').onclick = closeDialog;
+$('retry-flight-button').onclick = retryFlight;
 $('interaction-prompt').onclick = () => {
   if (mode === 'playing') {
     sim.interact();
@@ -317,11 +343,10 @@ $('adventure-tab').onclick = () => {
 $('fullscreen-button').onclick = async () => {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
-    else if (!(await enterFullscreen($('stage')))) {
+    else if (!(await enterFullscreen($('stage'))))
       toast('For a bigger view, turn your phone to landscape.');
-    }
   } catch {
-    toast('Fullscreen is unavailable. Try landscape orientation.');
+    toast('Fullscreen is unavailable. Landscape still gives you more room.');
   }
 };
 window.addEventListener('keydown', (e) => {
@@ -330,12 +355,13 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     pause();
   }
-  if (e.code === 'KeyM' && mode === 'playing') map();
+  if (mode === 'playing' && e.code === 'KeyM') worlds(true);
+  if (mode === 'playing' && e.code === 'KeyV') worlds();
   if (e.code === 'Tab' && mode === 'dialog') {
     const elements = [...$('dialog').querySelectorAll('button,select,a,[tabindex="0"]')].filter(
-      (e) => !e.disabled,
-    );
-    const first = elements[0],
+        (e) => !e.disabled,
+      ),
+      first = elements[0],
       last = elements.at(-1);
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
@@ -353,10 +379,11 @@ document.addEventListener('game-context-lost', () => {
   if (mode === 'playing') pause();
   toast('The graphics context paused. Refresh if the scene does not recover.');
 });
-if (sim.collected.size || sim.rescued.size) {
+if (
+  Object.values(campaign.worlds).some((s) => s.gems.length || s.rescues.length || s.enemies.length)
+) {
   $('start-button').innerHTML = `Continue adventure ${icon('arrow')}`;
-  $('continue-note').textContent =
-    `Your adventure is saved · ${sim.collected.size} gems discovered`;
+  $('continue-note').textContent = 'Your worlds and friends are saved on this device.';
 }
 if (!audio.enabled) {
   $('sound-button').classList.add('muted');
@@ -366,7 +393,7 @@ if (!audio.enabled) {
 try {
   await loadArtTextures();
   await loadModelFiles();
-  render = new GameRenderer($('game'));
+  render = new GameRenderer($('game'), sim.level);
   render.setQuality(settings.quality === 'low' ? 'low' : 'high');
   $('loading').classList.add('hidden');
   updateHUD();
@@ -382,9 +409,9 @@ try {
       events();
       audio.update();
     }
-    const orbit = input.orbit;
+    const orbit = input.orbit,
+      recenter = input.recenter;
     input.orbit = 0;
-    const recenter = input.recenter;
     input.recenter = false;
     render.update(
       dt,
@@ -401,28 +428,28 @@ try {
     }
   }
   requestAnimationFrame(frame);
-  // Read-only diagnostics are useful to hosts and performance tooling.
   window.ember = Object.freeze({
     snapshot: () => ({
       mode,
+      world: campaign.landId,
       adventureTime: sim.time,
-      dragonPose: {
-        jaw: render.dragon.userData.jaw?.rotation.x,
-        blink: render.dragon.userData.eyes?.[0].scale.y,
-        head: render.dragon.userData.head.rotation.x,
-      },
-      enemyStates: sim.enemies
-        .filter((e) => !sim.defeated.has(e.id))
-        .map((e) => ({ id: e.id, state: e.state, timer: e.timer })),
-      fireActive: render.fire.root.visible,
-      fireParticles: render.fire.pool.activeCount,
       player: { ...sim.player },
       gems: sim.collected.size,
       rescues: sim.rescued.size,
       enemies: sim.defeated.size,
       chests: sim.broken.size,
-      activeGems: sim.gems.filter((g) => g.active && !sim.collected.has(g.id)).length,
+      enemyStates: sim.enemies
+        .filter((e) => !sim.defeated.has(e.id))
+        .map((e) => ({ id: e.id, state: e.state, timer: e.timer })),
+      dragonPose: {
+        jaw: render.dragon.userData.jaw?.rotation.x,
+        blink: render.dragon.userData.eyes?.[0].scale.y,
+        head: render.dragon.userData.head.rotation.x,
+      },
+      fireActive: render.fire.root.visible,
+      fireParticles: render.fire.pool.activeCount,
       singedGrass: render.world.grassSystem.field.burn.reduce((n, b) => n + (b > 0 ? 1 : 0), 0),
+      activeGems: sim.gems.filter((g) => g.active && !sim.collected.has(g.id)).length,
       camera: {
         x: render.camera.position.x,
         y: render.camera.position.y,
@@ -434,11 +461,22 @@ try {
       quality: render.quality,
       drawCalls: render.renderer.info.render.calls,
       triangles: render.renderer.info.render.triangles,
+      landmarks: render.world.landmarks || [],
+      memory: { ...render.renderer.info.memory },
       audioState: audio.ctx?.state || 'not-started',
+      flight: flight()
+        ? {
+            targets: sim.collectedTargets.size,
+            remaining: sim.remaining,
+            result: sim.result,
+            timed: sim.timed,
+            inverted: sim.inverted,
+          }
+        : null,
     }),
   });
 } catch (error) {
   console.error(error);
   $('loading').innerHTML =
-    '<div class="error-message"><h2>The Skylands need WebGL.</h2><p>Try a current Chrome, Safari, Firefox or Edge browser with graphics acceleration enabled.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>';
+    '<div class="error-message"><h2>The adventure needs WebGL.</h2><p>Try a current Chrome, Safari, Firefox or Edge browser with graphics acceleration enabled.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>';
 }

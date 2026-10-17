@@ -79,11 +79,12 @@
           <div class="hud" id="hud">
             <div class="hud-item gem-count">
               <svg><use href="#i-gem" /></svg><span id="gem-count">0</span
-              ><small id="gem-total">/ 94</small>
+              ><small id="gem-total">/ 76</small>
             </div>
             <span class="hud-divider"></span>
             <div class="hud-item rescue-count">
-              <svg><use href="#i-wing" /></svg><span id="rescue-count">0</span><small>/ 3</small>
+              <svg><use href="#i-wing" /></svg><span id="rescue-count">0</span
+              ><small id="rescue-total">/ 3</small>
             </div>
             <span class="hud-divider health-divider"></span>
             <div id="health" aria-label="3 health" class="health">
@@ -99,8 +100,8 @@
             </div>
             <h1>Small dragon.<br /><em>Big adventure.</em></h1>
             <p>
-              Spread your wings. Follow your curiosity.<br />A forgotten sky kingdom is waiting for
-              you.
+              Spread your wings. Follow your curiosity.<br />Castle gardens, desert forts and
+              crystal peaks.<br />And a whole sky to fly.
             </p>
             <button id="start-button" class="primary-button">
               Let’s explore <svg><use href="#i-arrow" /></svg>
@@ -112,7 +113,7 @@
           <div class="intro-bottom">
             <span
               ><svg><use href="#i-wing" /></svg> RUN · GLIDE · BREATHE FIRE</span
-            ><span class="intro-tip">Three islands. A world worth wandering.</span>
+            ><span class="intro-tip">Three lands. A whole sky to explore.</span>
           </div>
           <button
             id="mobile-settings-button"
@@ -134,9 +135,13 @@
             <span class="quest-label">YOUR ADVENTURE</span
             ><strong id="quest-title">Bring the Skylands back to life</strong
             ><span id="quest-copy">Free 3 dragon friends & collect 30 gems.</span>
+            <div id="flight-counts" class="flight-counts hidden"></div>
             <div class="quest-track"><i id="quest-progress"></i></div>
           </div>
           <div class="bottom-left">
+            <button id="worlds-button" class="worlds-button">
+              <svg><use href="#i-map" /></svg> Worlds <kbd>V</kbd>
+            </button>
             <button id="map-button" class="mini-map-button" aria-label="Open realm map">
               <canvas id="minimap" width="180" height="140"></canvas
               ><span
@@ -145,12 +150,28 @@
             </button>
             <div class="saved-indicator" id="save-status">● Progress saves automatically</div>
           </div>
-          <div class="desktop-controls">
+          <div class="desktop-controls" id="desktop-controls">
             <span><kbd>W A S D</kbd> Move</span><span><kbd>SPACE</kbd> Jump / glide</span
             ><span><kbd>SHIFT</kbd> Charge</span><span><kbd>F</kbd> Flame</span
             ><span class="camera-hint">Drag to look · C to recenter</span>
           </div>
           <div class="stage-tools">
+            <button
+              class="glass-button hidden"
+              data-action="turn"
+              aria-label="Turn around in flight"
+              title="Turn around (R / L1)"
+            >
+              ↶
+            </button>
+            <button
+              class="glass-button hidden"
+              id="retry-flight-button"
+              aria-label="Restart flight"
+              title="Restart flight"
+            >
+              ↻
+            </button>
             <button
               class="glass-button"
               data-action="recenter"

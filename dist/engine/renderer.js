@@ -9,7 +9,7 @@ import { ScorchMarks } from '../game/scorch.js';
 import { updateRescue } from '../game/rescue.js';
 import { createCompanion, updateCompanion } from '../game/companion.js';
 export class GameRenderer {
-  constructor(canvas) {
+  constructor(canvas, level) {
     this.canvas = canvas;
     this.scene = new T.Scene();
     this.scene.fog = new T.FogExp2(0xc9bed5, 0.0036);
@@ -35,6 +35,7 @@ export class GameRenderer {
       fragmentShader:
         'uniform vec3 top;uniform vec3 bottom;varying vec3 vWorld;void main(){float h=normalize(vWorld).y;gl_FragColor=vec4(mix(bottom,top,smoothstep(-0.3,0.55,h)),1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}',
     });
+    this.skyMat = skyMat;
     this.scene.add(new T.Mesh(skyGeo, skyMat));
     this.scene.add(new T.HemisphereLight(0xd2f4ff, 0x756447, 1.8));
     this.sun = new T.DirectionalLight(0xffdf9c, 2.3);
@@ -60,7 +61,12 @@ export class GameRenderer {
     disc.position.set(-110, 68, -150);
     this.scene.add(disc);
     this.scene.environment = reflectionSky();
-    this.world = createWorld(this.scene);
+    this.world = createWorld(this.scene, level);
+    if (level?.theme) {
+      this.skyMat.uniforms.top.value.setHex(level.theme.sky);
+      this.skyMat.uniforms.bottom.value.setHex(level.theme.fog);
+      this.scene.fog.color.setHex(level.theme.fog);
+    }
     this.scorch = new ScorchMarks(this.scene);
     this.chase = new ChaseCamera();
     this.ray = new T.Raycaster();
@@ -86,9 +92,31 @@ export class GameRenderer {
     });
     canvas.addEventListener('webglcontextrestored', () => location.reload());
   }
+  loadLevel(level) {
+    const next = createWorld(this.scene, level);
+    this.world.dispose?.();
+    this.world.root.removeFromParent();
+    this.world = next;
+    this.world.grassSystem.setQuality(this.quality);
+    if (level.theme) {
+      this.skyMat.uniforms.top.value.setHex(level.theme.sky);
+      this.skyMat.uniforms.bottom.value.setHex(level.theme.fog);
+      this.scene.fog.color.setHex(level.theme.fog);
+    }
+    this.renderer.renderLists.dispose();
+    this.resetAdventure();
+  }
   resetAdventure() {
     this.chase = new ChaseCamera();
     this.angle = 0;
+    this.particles.life.fill(0);
+    this.fire.pool.life.fill(0);
+    this.fire.pool.size.fill(0);
+    this.fire.pool.heat.fill(0);
+    this.fire.pool.emission = 0;
+    this.fire.root.visible = false;
+    this.fire.embers.visible = false;
+    this.fire.light.intensity = 0;
     this.companion.userData.initialized = false;
     this.world.grassSystem.field.burn.fill(0);
     for (const group of this.world.grassSystem.groups) {
@@ -121,7 +149,13 @@ export class GameRenderer {
     this.time += dt;
     const p = sim.player;
     this.dragon.position.set(p.x, p.y + 0.07, p.z);
-    this.dragon.rotation.y = playing ? p.angle : 0.5;
+    this.dragon.rotation.order = 'YXZ';
+    this.dragon.rotation.set(
+      p.flying ? -p.pitch - p.loop * Math.PI * 2 : 0,
+      playing ? p.angle : 0.5,
+      p.flying ? p.bank : 0,
+      'YXZ',
+    );
     this.dragon.visible = !(p.invincible > 0 && Math.floor(p.invincible * 10) % 2 === 0);
     animateDragon(
       this.dragon,
@@ -137,7 +171,11 @@ export class GameRenderer {
       this.target.set(c.targetX, c.targetY, c.targetZ);
       this.cameraDesired.set(c.x, c.y, c.z);
       // Keep the low camera out of stonework and above the walkable terrain.
-      const floor = terrainHeight(sim.level, c.x, c.z);
+      if (p.flying) {
+        this.target.y += Math.sin(p.pitch) * 7;
+        this.cameraDesired.y += 1.3 - Math.sin(p.pitch) * 7;
+      }
+      const floor = p.flying ? null : terrainHeight(sim.level, c.x, c.z);
       if (floor !== null) this.cameraDesired.y = Math.max(this.cameraDesired.y, floor + 1.05);
       this.rayDirection.copy(this.cameraDesired).sub(this.target);
       const distance = this.rayDirection.length();
@@ -165,22 +203,27 @@ export class GameRenderer {
       m.updateMatrix();
       this.world.gemBatch.setMatrixAt(i, m.matrix);
     }
-    this.world.gemBatch.instanceMatrix.needsUpdate = true;
+    if (this.world.gemBatch) this.world.gemBatch.instanceMatrix.needsUpdate = true;
+    this.world.updateFlight?.(sim);
     for (const [id, m] of this.world.rescueMeshes) {
       updateRescue(m.userData, sim.rescued.has(id), sim.time, sim.rescueTimes.get(id));
     }
     for (const [id, m] of this.world.chestMeshes) m.visible = !sim.broken.has(id);
     for (const e of sim.enemies) {
       const m = this.world.enemyMeshes.get(e.id);
-      m.visible = !sim.defeated.has(e.id);
+      m.visible = !sim.defeated.has(e.id) && Math.hypot(e.x - p.x, e.z - p.z) < 55;
       m.position.set(e.x, e.y + Math.abs(Math.sin(sim.time * (e.fleeing ? 11 : 4))) * 0.06, e.z);
       m.rotation.y = e.angle ?? 0;
       animateSentinel(m, sim.time, e.speed || 0, e.state || 'patrol');
     }
     this.world.grassSystem.update(dt, p, effectsActive, sim.time);
-    this.scorch.update(dt, p, effectsActive, sim.level);
-    this.world.portal.userData.glow.material.color.setHex(sim.unlocked ? 0x83f7cd : 0x5e7ea3);
-    this.world.portal.userData.glow.material.opacity = 0.55 + Math.sin(this.time * 2) * 0.15;
+    this.scorch.update(dt, p, effectsActive && !p.flying, sim.level);
+    if (this.world.portal && !sim.level.portals) {
+      this.world.portal.userData.glow.material.color.setHex(sim.unlocked ? 0x83f7cd : 0x5e7ea3);
+    }
+    for (const portal of this.world.portalMeshes?.values() ||
+      (this.world.portal ? [this.world.portal] : []))
+      portal.userData.glow.material.opacity = 0.6 + Math.sin(this.time * 2) * 0.12;
     this.world.waterTex.offset.y -= dt * 0.18;
     updateCompanion(
       this.companion,

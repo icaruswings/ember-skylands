@@ -14,6 +14,8 @@ export async function loadModelFiles() {
         if (!o.isMesh) return;
         const { surfaceKind, tint } = o.material.userData;
         if (surfaceKind) o.material = surface(surfaceKind, tint);
+        o.geometry.userData.shared = true;
+        o.material.userData.shared = true;
         o.castShadow = o.receiveShadow = true;
       });
       templates.set(name, root);

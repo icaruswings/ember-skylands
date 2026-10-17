@@ -64,6 +64,27 @@ export function texture(kind) {
         c.fillRect(x * 64 + (y % 2) * 32 + 5, y * 32 + 3, 53, 3);
       }
   }
+  if (kind === 'sand' || kind === 'snow') {
+    c.fillStyle = kind === 'sand' ? '#e6d0a7' : '#eaf0f5';
+    c.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 6000; i++) {
+      c.fillStyle =
+        i % 2
+          ? 'rgba(255,255,255,.18)'
+          : kind === 'sand'
+            ? 'rgba(140,102,57,.12)'
+            : 'rgba(110,145,178,.12)';
+      c.fillRect(random() * 256, random() * 256, 0.3 + random() * 0.8, 0.3 + random() * 0.8);
+    }
+    c.strokeStyle = kind === 'sand' ? 'rgba(164,133,89,.12)' : 'rgba(161,188,213,.14)';
+    for (let i = 0; i < 35; i++) {
+      const y = random() * 256;
+      c.beginPath();
+      c.moveTo(0, y);
+      c.bezierCurveTo(65, y - 3, 170, y + 3, 256, y);
+      c.stroke();
+    }
+  }
   if (kind === 'water') {
     c.fillStyle = '#61caca';
     c.fillRect(0, 0, 256, 256);

@@ -12,3 +12,10 @@ Task 2: in progress.
 
 Task 2: complete — 11 full-flight tests and campaign flight-record test GREEN; all 19 Node files and syntax checks pass. Primary manual and secondary flight-control research recorded.
 Task 3: in progress.
+
+User steering: show screenshots of every destination for approval before completion. Subsequently requested gentle rolling hills; shared collision/render height surface, conforming paths and scenery, elevated objectives and enemies now implemented. Screenshot approval remains pending.
+Tasks 3/4: actual phone UI integration passed across all four destinations before hills, with scene memory stable across six land switches. Full rerun after hills in progress.
+Hill regression checks: visible height variation, slopes under 0.28, sustained planted charge uphill/downhill, enemy ground contact, and ground/path vertex alignment pass. All 21 Node test files and application syntax checks pass.
+
+Tasks 3/4: complete — final hill-enabled phone integration passes all destinations, real touch movement/release, scene resource reuse, flight controls/pause/retry/timer, saves/reload and portrait picker, with zero page errors. Matching visible boulders resolve final review's sole P2; reviewer rechecked and reports no blocking findings. 126 behavior cases across 21 Node files pass, including full movement-driven 32-target timed flight completion in 76.75 seconds.
+Task 5: user screenshot approval pending; final capture and saving branch work in progress. No claim of completion or new public deployment until requested visual review.

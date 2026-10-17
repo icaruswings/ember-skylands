@@ -57,6 +57,8 @@ export function updateEnemy(e, player, dt, level) {
       e.z = previousZ;
     }
   }
+  const floor = terrainHeight(level, e.x, e.z, e.y + 0.65);
+  if (floor !== null) e.y = floor;
   const movement = Math.hypot(e.x - previousX, e.z - previousZ);
   e.speed = dt ? movement / dt : 0;
   if (movement > 0.00001) e.angle = Math.atan2(e.x - previousX, e.z - previousZ);

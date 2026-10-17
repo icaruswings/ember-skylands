@@ -38,7 +38,7 @@ test('jumping and gliding at a boundary cannot escape a forgiving ground land', 
   assert.equal(s.player.health, 3);
   assert.equal(s.player.y, 0);
 });
-test('all three ground lands have broad flat routes and reachable objectives', async () => {
+test('all three ground lands have broad continuous routes and reachable objectives', async () => {
   const { LANDS } = await import('../dist/game/lands.js');
   assert.equal(LANDS.length, 3);
   assert.deepEqual(
@@ -58,9 +58,9 @@ test('all three ground lands have broad flat routes and reachable objectives', a
       ...land.rescues,
       ...land.portals,
     ])
-      assert.equal(terrainHeight(land, item.x, item.z), 0, item.id);
+      assert.ok(terrainHeight(land, item.x, item.z) !== null, item.id);
     for (const x of [-50, -25, 0, 25, 50])
-      for (const z of [-50, -25, 0, 25, 50]) assert.equal(terrainHeight(land, x, z), 0);
+      for (const z of [-50, -25, 0, 25, 50]) assert.ok(terrainHeight(land, x, z) !== null);
   }
 });
 test('ground travel portals are available without gem or rescue gates', async () => {

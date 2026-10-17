@@ -1390,3 +1390,175 @@ body * {
     flex-wrap: wrap;
   }
 }
+
+/* Broad-world travel and full-flight controls. */
+.worlds-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 152px;
+  min-height: 44px;
+  margin-bottom: 7px;
+  padding: 10px;
+  background: #fff8e7f2;
+  color: #3c6556;
+  border: 1px solid #fff7da;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px #203d3020;
+  font: 600 12px var(--sans);
+}
+.worlds-button svg {
+  width: 17px;
+  height: 17px;
+}
+.world-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.world-card {
+  padding: 15px;
+  border: 1px solid #cdd6bd;
+  border-radius: 12px;
+  background: #f7f4e8;
+  color: #3d5d50;
+  text-align: left;
+  min-height: 135px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.world-card strong {
+  font: 22px Georgia;
+  color: #294c40;
+}
+.world-card small {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #68785d;
+}
+.world-card .world-progress {
+  margin-top: auto;
+  font-size: 10px;
+  color: #8b6f44;
+}
+.world-card.current {
+  border-color: #a1bf95;
+  background: #edf1df;
+}
+.world-card[data-land]:hover {
+  background: #e9eedc;
+}
+.flight-card {
+  background: #e9f0ef;
+}
+.flight-card .dialog-actions {
+  margin-top: auto;
+  gap: 6px;
+}
+.flight-card button {
+  min-height: 44px;
+  padding: 9px 12px;
+  font-size: 11px;
+}
+.flight-counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: 9px 0 2px;
+  font-size: 10px;
+}
+.flight-counts span {
+  background: #ffffff75;
+  padding: 5px;
+  border-radius: 5px;
+}
+.flight-mode #health,
+.flight-mode .health-divider {
+  display: none;
+}
+.flight-mode .quest-card {
+  width: 210px;
+}
+.flight-mode .stage-tools .glass-button {
+  font-size: 21px;
+}
+.flight-mode .stage-tools {
+  gap: 6px;
+}
+.flight-tip {
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: #e6ece2;
+  border-radius: 8px;
+}
+#big-map {
+  height: auto;
+  max-height: 200px;
+}
+@media (pointer: coarse), (max-width: 700px) {
+  .worlds-button {
+    width: 105px;
+    font-size: 11px;
+  }
+  .worlds-button kbd {
+    display: none;
+  }
+  .bottom-left {
+    bottom: 160px;
+  }
+  .flight-mode .quest-card {
+    width: 190px;
+  }
+  .flight-counts {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .world-card {
+    padding: 12px;
+    min-height: 145px;
+  }
+  .world-card strong {
+    font-size: 20px;
+  }
+}
+@media (max-height: 550px) and (min-width: 600px) and (pointer: coarse) {
+  .bottom-left {
+    bottom: 130px;
+  }
+  .mini-map-button {
+    display: none;
+  }
+  .worlds-button {
+    width: 96px;
+    min-height: 38px;
+  }
+  .flight-mode .stage-tools {
+    left: 134px;
+    bottom: 20px;
+  }
+  .flight-mode .stage-tools .glass-button {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (max-width: 420px) {
+  .world-grid {
+    gap: 8px;
+  }
+  .world-card strong {
+    font-size: 18px;
+  }
+  .world-card {
+    padding: 10px;
+  }
+  .flight-card .dialog-actions {
+    flex-direction: column;
+  }
+  .world-card small {
+    font-size: 9px;
+  }
+}

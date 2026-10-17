@@ -155,3 +155,30 @@ test('Sunny Flight provides four complete groups of eight distinct targets', asy
   for (const kind of ['arch', 'chest', 'barrel', 'plane'])
     assert.equal(FLIGHT_COURSE.targets.filter((t) => t.kind === kind).length, 8);
 });
+
+test('the authored timed course can be completed using steering, pitch and flame without teleporting', async () => {
+  const { FlightSimulation } = await import('../dist/engine/flight.js');
+  const { FLIGHT_COURSE } = await import('../dist/game/flight-course.js');
+  const s = new FlightSimulation(FLIGHT_COURSE, { timed: true });
+  const clamp = (v) => Math.max(-1, Math.min(1, v));
+  let target;
+  for (let i = 0; i < 60 * 190 && !s.result; i++) {
+    if (!target || s.collectedTargets.has(target.id))
+      target = s.targets.find((t) => !s.collectedTargets.has(t.id));
+    const p = s.player,
+      dx = target.x - p.x,
+      dz = target.z - p.z;
+    const desired = Math.atan2(dx, dz);
+    const error = Math.atan2(Math.sin(desired - p.angle), Math.cos(desired - p.angle));
+    const pitch = Math.atan2(target.y - p.y, Math.max(5, Math.hypot(dx, dz)));
+    s.update(1 / 60, {
+      viewX: clamp(-error * 3),
+      viewZ: clamp(-pitch / 0.7),
+      flamePressed: i % 20 === 0,
+    });
+  }
+  assert.equal(s.result, 'complete');
+  assert.equal(s.collectedTargets.size, 32);
+  assert.ok(s.time < 90);
+  assert.equal(s.drain().filter((e) => e.type === 'flight-recover').length, 0);
+});

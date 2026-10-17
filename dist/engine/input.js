@@ -22,14 +22,22 @@ export class Input {
     this.lookEnabled = false;
     this.recenter = false;
     this.padRecenterHeld = false;
+    this.padFlightHeld = new Set();
     const prevent = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
     window.addEventListener('keydown', (e) => {
+      if (this.enabled === false) return;
       if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
       if (prevent.has(e.code)) e.preventDefault();
       this.keys.add(e.code);
       if (!e.repeat) {
         if (e.code === 'KeyC') this.recenter = true;
-        const action = { Space: 'jump', KeyF: 'flame', KeyE: 'interact' }[e.code];
+        const action = {
+          Space: 'jump',
+          KeyF: 'flame',
+          KeyE: 'interact',
+          KeyL: 'loop',
+          KeyR: 'turn',
+        }[e.code];
         if (action) this.pulses.set(action, (this.pulses.get(action) || 0) + 1);
       }
     });
@@ -157,8 +165,18 @@ export class Input {
     if (recenterHeld && !this.padRecenterHeld) this.recenter = true;
     this.padRecenterHeld = recenterHeld;
     this.orbit += (+!!pad?.buttons[6]?.pressed - +!!pad?.buttons[7]?.pressed) * 0.035;
+    for (const [action, index] of [
+      ['loop', 5],
+      ['turn', 4],
+    ]) {
+      const held = !!pad?.buttons[index]?.pressed;
+      if (held && !this.padFlightHeld.has(action))
+        this.pulses.set(action, (this.pulses.get(action) || 0) + 1);
+      if (held) this.padFlightHeld.add(action);
+      else this.padFlightHeld.delete(action);
+    }
     const pressed = {};
-    for (const action of ['jump', 'flame', 'interact']) {
+    for (const action of ['jump', 'flame', 'interact', 'loop', 'turn']) {
       const count = this.pulses.get(action) || 0;
       pressed[action + 'Pressed'] = count > 0;
       if (count > 0) this.pulses.set(action, count - 1);
