@@ -171,6 +171,17 @@ export class Simulation {
         nz = c.z + (d ? dz / d : Math.cos(p.angle + Math.PI)) * radius;
       }
     }
+    // Enclosed valleys opt in. Legacy terrain still supports genuine platforming.
+    if (this.level.bounds) {
+      const b = this.level.bounds,
+        radius = 0.6;
+      const cx = Math.max(b.minX + radius, Math.min(b.maxX - radius, nx));
+      const cz = Math.max(b.minZ + radius, Math.min(b.maxZ - radius, nz));
+      if (cx !== nx) p.vx = 0;
+      if (cz !== nz) p.vz = 0;
+      nx = cx;
+      nz = cz;
+    }
     const ceiling = p.y + (p.grounded ? 0.65 : 0.01);
     const floor = terrainHeight(this.level, nx, nz, ceiling);
     const old = terrainHeight(this.level, p.x, p.z, ceiling);
@@ -304,8 +315,16 @@ export class Simulation {
     const rescue = this.rescueNearby();
     if (rescue) return rescue;
     const p = this.player;
-    const g = this.level.portal;
+    const g = (this.level.portals || [this.level.portal]).find(
+      (g) => Math.hypot(p.x - g.x, p.z - g.z) < 4 && Math.abs(p.y - g.y) < 2,
+    );
+    if (!g) return null;
     if (Math.hypot(p.x - g.x, p.z - g.z) < 4 && Math.abs(p.y - g.y) < 2) {
+      if (g.destination) {
+        const event = { type: 'travel', destination: g.destination };
+        this.events.push(event);
+        return event;
+      }
       const event = { type: this.unlocked ? 'complete' : 'locked' };
       if (this.unlocked) this.complete = true;
       this.events.push(event);
@@ -315,9 +334,15 @@ export class Simulation {
   }
   nearestInteraction() {
     const p = this.player;
-    return Math.hypot(p.x - this.level.portal.x, p.z - this.level.portal.z) < 4 &&
-      Math.abs(p.y - this.level.portal.y) < 2
-      ? { name: this.unlocked ? 'Journey home' : 'Sunstone portal', portal: true }
+    const g = (this.level.portals || [this.level.portal]).find(
+      (g) => Math.hypot(p.x - g.x, p.z - g.z) < 4 && Math.abs(p.y - g.y) < 2,
+    );
+    return g
+      ? {
+          name: g.destination ? g.name : this.unlocked ? 'Journey home' : 'Sunstone portal',
+          portal: true,
+          destination: g.destination,
+        }
       : null;
   }
 }

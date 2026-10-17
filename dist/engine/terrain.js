@@ -1,5 +1,9 @@
 /** Walkable surfaces can overlap vertically; a ceiling selects the reachable floor. */
 export function terrainHeight(level, x, z, ceiling = Infinity) {
+  if (level.bounds) {
+    const b = level.bounds;
+    return x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ ? b.floorY : null;
+  }
   let height = null;
   const consider = (y) => {
     if (y <= ceiling) height = Math.max(height ?? -Infinity, y);
