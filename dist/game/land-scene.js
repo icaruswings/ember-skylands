@@ -9,6 +9,7 @@ import { createItems } from './scene-items.js';
 import { disposeScene } from './scene-resources.js';
 import { groundHeight } from '../engine/terrain.js';
 import { terrainGeometry, pathGeometry } from './terrain-mesh.js';
+import { createLandFeatures } from './land-features.js';
 
 /** A continuous valley: scenery establishes the boundary instead of a lethal cliff. */
 export function createLandScene(scene, level) {
@@ -119,16 +120,31 @@ export function createLandScene(scene, level) {
     });
     const pond = landmark(
       'waterfall-pond',
-      mesh(new T.CircleGeometry(7, 40), water, root, -44, 0.07, 40),
+      mesh(new T.CircleGeometry(5, 40), water, root, -44, 0.07, -14),
     );
     pond.rotation.x = -Math.PI / 2;
     pond.scale.y = 0.75;
     waters.push(pond);
-    const fall = mesh(new T.PlaneGeometry(5, 8), water, root, -48, 4, 47);
+    const fall = mesh(new T.PlaneGeometry(11.8, 8.5), water.clone(), root, -44, 4.25, -19.8);
+    fall.material.opacity = 0.52;
+    fall.material.side = T.DoubleSide;
     waters.push(fall);
     for (let i = 0; i < 12; i++) {
-      const x = i % 2 ? -48 : 48,
-        z = -42 + Math.floor(i / 2) * 17;
+      const positions = [
+        [-43, 20],
+        [-43, 43],
+        [-40, 8],
+        [-20, 46],
+        [-12, 20],
+        [46, 43],
+        [50, 18],
+        [39, 20],
+        [50, -9],
+        [-52, -3],
+        [39, 39],
+        [-39, 45],
+      ];
+      const [x, z] = positions[i];
       const tree = createTree(201 + i);
       tree.position.set(x, 0, z);
       tree.scale.setScalar(0.85 + (i % 3) * 0.15);
@@ -137,14 +153,14 @@ export function createLandScene(scene, level) {
     // Formal hedges decorate the perimeter, leaving the combat lanes unobstructed.
     const hedge = new T.MeshStandardMaterial({ color: 0x477647, roughness: 1 });
     for (const side of [-1, 1])
-      for (let i = 0; i < 4; i++) block(root, hedge, side * 48, 1.0, -25 + i * 16, 2.3, 2, 8);
+      for (let i = 0; i < 3; i++) block(root, hedge, side * 52, 1.0, 12 + i * 15, 2.3, 2, 7);
   } else if (level.id === 'peace-keepers') {
     landmark('training-fort', tower(0, -56, 17, 6));
     const bronze = new T.MeshStandardMaterial({ color: 0x535859, metalness: 0.6, roughness: 0.5 });
     for (const side of [-1, 1])
       for (let i = 0; i < 3; i++) {
         const g = new T.Group();
-        g.position.set(side * 48, 0, -28 + i * 27);
+        g.position.set(side * 49, 0, -6 + i * 20);
         g.rotation.y = (-side * Math.PI) / 2;
         root.add(g);
         const barrel = mesh(new T.CylinderGeometry(0.55, 0.8, 3.7, 24), bronze, g, 0, 1.5, 0);
@@ -158,7 +174,7 @@ export function createLandScene(scene, level) {
     for (const side of [-1, 1])
       for (let i = 0; i < 3; i++) {
         const g = new T.Group();
-        g.position.set(side * (32 + i * 6), 0, 44);
+        g.position.set(side * (14 + i * 12), 0, 48);
         root.add(g);
         const tent = mesh(new T.CylinderGeometry(0, 5, 4.5, 4), roof, g, 0, 2.25, 0);
         tent.rotation.y = Math.PI / 4;
@@ -187,7 +203,7 @@ export function createLandScene(scene, level) {
     });
     for (let i = 0; i < 18; i++) {
       const side = i % 2 ? 1 : -1,
-        x = side * (44 + (i % 4)),
+        x = side * (53 + (i % 2)),
         z = -42 + Math.floor(i / 2) * 11;
       for (let j = 0; j < 3; j++) {
         const c = mesh(
@@ -204,30 +220,16 @@ export function createLandScene(scene, level) {
     landmark('crystal-gardens', root.children.at(-1));
     for (const side of [-1, 1])
       for (let i = 0; i < 5; i++) {
-        const x = side * 50,
+        const x = side * 54,
           z = -40 + i * 20;
         mesh(new T.CylinderGeometry(0.2, 0.5, 6, 8), stoneMat, root, x, 3, z);
         for (let j = 0; j < 3; j++)
           mesh(new T.ConeGeometry(2.4 - j * 0.5, 3.3, 10), trim, root, x, 3 + j * 1.4, z);
       }
   }
-  const rockMat = new T.MeshStandardMaterial({
-    color: t.stone,
-    map: texture('snow'),
-    roughness: 1,
-  });
-  // Visible low boulders correspond exactly to the collision cylinders in level data.
-  for (const obstacle of level.obstacles) {
-    const rock = mesh(
-      new T.DodecahedronGeometry(obstacle.r, 2),
-      rockMat,
-      root,
-      obstacle.x,
-      1.6,
-      obstacle.z,
-    );
-    rock.scale.y = 0.64;
-  }
+  const features = createLandFeatures(root, level, { stone: stoneMat, roof, trim });
+  conformed.add(features.root);
+  landmarks.push(...features.landmarks);
   applySceneryUvs(root, new Set([stoneMat, roof]), 6);
   // Lift scenery before creating already-elevated interactive items and grass.
   for (const child of root.children)
