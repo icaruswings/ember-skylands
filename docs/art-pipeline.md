@@ -6,17 +6,18 @@ Classic purple dragon with gold horns/yellow ventral plates, orange membranes, a
 
 ## Canonical textures
 
-All three stored files are original image-generated artwork. Lossless WebP encoding preserves the source PNG's decoded pixels exactly. The combined download is approximately 6.6 MB. No art service or CDN is contacted at runtime.
+All four stored files are original image-generated artwork. The three original maps use lossless WebP; the new prop atlas uses quality-92 WebP. The combined download is approximately 7.1 MB. No art service or CDN is contacted at runtime.
 
 | File                              | Native resolution | Purpose                                                      |
 | --------------------------------- | ----------------- | ------------------------------------------------------------ |
 | `dist/assets/dragon-scales.webp`  | 1254 × 1254       | Neutral overlapping scales, tinted per dragon                |
 | `dist/assets/oak-bark.webp`       | 1254 × 1254       | Vertical organic bark grain                                  |
 | `dist/assets/material-atlas.webp` | 1254 × 1254       | Four generated swatches; wing and foliage quadrants are used |
+| `dist/assets/prop-surfaces.webp`  | 1254 × 1254       | Painted limestone, wood, slate and steel                     |
 
 Generation direction: a seamless, evenly lit, flat albedo swatch with crisp hand-painted detail, no text, labels, border, characters or perspective. Scales use pale ivory shield shapes for tinting; bark uses warm neutral brown winding fissures. Atlas quadrants contain ivory scales, amber veined membrane, oak bark and green foliage. Native output dimensions are recorded above rather than claiming the requested generation size.
 
-`surfaces.js` loads local textures before scene construction, extracts the used atlas quadrants into independent 627px textures, and creates bounded 512px linear-data normal maps from painted luminance. This approximates fine surface relief; it is not a sculpt-to-mesh normal bake. The same material module generates 1024px armor wear, woven cloth and mottled skin textures, plus 512px horn growth bands. Environment grass, stone, wood and water textures are also generated at 1024px. Color maps use sRGB, normal maps use linear data, and filtering uses mipmaps and anisotropy.
+`surfaces.js` loads local textures before scene construction, extracts the used atlas quadrants into independent 627px textures, and creates bounded 512px linear-data normal maps from painted luminance. This approximates fine surface relief; it is not a sculpt-to-mesh normal bake. The material module generates 1024px woven cloth and mottled skin textures, plus 512px horn growth bands. Grass, sand, snow and water use generated 1024px maps; the new painted atlas supplies masonry, wood, slate and steel. Color maps use sRGB, normal maps use linear data, and filtering uses mipmaps and anisotropy.
 
 ## Models
 

@@ -1,3 +1,13 @@
+# Character/movement polish validation — 2026-10-17
+
+- All 142 behavior cases across 23 isolated Node files pass; npm test and all authored JavaScript syntax checks pass.
+- Actual phone touch checks pass: tap/held jump heights 0.85/2.0 units; jump/glide/cancel; eased charge turn; complete release stop; stationary stride; fire; paused simulation and rig. The glide check sends its second native touch during takeoff, avoiding an actionability delay into the intentional landing-jump buffer window.
+- All four destinations and six ground scene switches pass the full campaign integration with stable resource counts. Artisans: 213 calls/332,930 visible triangles; Peace Keepers: 206/293,144; Magic Crafters: 209/298,496. Budgets for the requested denser models: 450 calls/400,000 visible triangles in these scenarios.
+- The dedicated input-release regression passes with pointer ends suppressed and independent finger releases in either order. Mouse release without pointer capture and resize cancellation also pass.
+- The standard GLB loader, exact authored export comparison, close-up art viewer, UV validity/seams, index cost, fitted armor coverage and shared-resource disposal checks pass. The reviewer’s glide-entry wing snap finding was reproduced and fixed; the reviewer verified resolution.
+- Actual loaded dragon: 25,680 triangles/15,791 vertices, 688,664-byte GLB. Props have four painted 627px swatches with 512px relief normals. Close-ups and all four phone world views are saved as docs/polish-\*.png.
+- The user explicitly requested publication after testing, then a separate distinct-layouts/exploration/secrets pass. Physical phone/Safari/controller limits remain as documented below.
+
 # Worlds and flight review — 2026-10-17
 
 The user approved all four screenshots on 2026-10-17 (“Looks great.”). This tested build is proceeding to publication.
