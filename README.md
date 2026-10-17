@@ -33,7 +33,7 @@ Open http://localhost:4173. To deploy elsewhere, serve `dist/` as a static direc
 | Worlds / map     | V / M         | Map button               | —                     |
 | Pause            | Escape        | Pause button             | —                     |
 
-Small joystick movements walk slowly; touch the pad anywhere to establish a neutral thumb position, then slide to move. Walking turns gradually and brakes quickly. Charging moves forward while held, even with a neutral stick, and steers in a wider arc. The camera stays steady while walking and running; use the camera button or C to recenter behind the dragon.
+Tap Jump for a short hop; hold it to jump higher. A second airborne tap opens or folds the glide. Small joystick movements walk slowly; touch the pad anywhere to establish a neutral thumb position, then slide to move. Walking turns gradually and brakes quickly. Charging moves forward while held, even with a neutral stick, and steers in a bounded arc, easing speed slightly through sharp turns. The camera stays steady while walking and running; use the camera button or C to recenter behind the dragon.
 
 Armored Gnorcs require a charge; large Gnorcs require flame. Giants wind up before striking. Nearby gems pull toward the dragon, and rescues restore health and set a checkpoint. Worlds lets you travel freely or reset enemies while keeping collected treasure and friends. Each land saves independently on this device; reopening returns to the last ground land. Old single-world saves migrate to the new campaign.
 
@@ -91,6 +91,7 @@ The Node suite covers gameplay, a complete movement-driven adventure, touch edge
 
 ```sh
 python tests/browser_worlds.py
+python tests/browser_polish.py
 python tests/browser_input_release.py
 ```
 

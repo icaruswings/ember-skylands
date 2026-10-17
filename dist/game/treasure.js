@@ -1,5 +1,6 @@
 import * as T from '../assets/three.module.js';
 import { mat, mesh, block } from './primitives.js';
+import { surface } from './surfaces.js';
 import { beveledBox } from './model-geometry.js';
 import { batchStatic } from '../engine/batching.js';
 
@@ -39,11 +40,11 @@ export function gemGeometry() {
 
 export function createChest() {
   const g = new T.Group();
-  const wood = mat(0xa56029, { roughness: 0.78 }),
-    gold = mat(0xe7bc58, { metalness: 0.65, roughness: 0.32 });
+  const wood = surface('wood', 0xffecd0),
+    gold = surface('armor', 0xf3cd78);
   mesh(beveledBox(), wood, g, 0, 0.43, 0).scale.set(1.25, 0.75, 0.8);
   const lid = mesh(
-    new T.CylinderGeometry(0.43, 0.43, 1.25, 12, 1, false, 0, Math.PI),
+    new T.CylinderGeometry(0.43, 0.43, 1.25, 24, 1, false, 0, Math.PI),
     wood,
     g,
     0,
@@ -57,7 +58,7 @@ export function createChest() {
     block(g, gold, s * 0.44, 0.45, -0.413, 0.075, 0.74, 0.055);
     block(g, gold, s * 0.44, 0.87, 0, 0.075, 0.065, 0.85);
     for (const y of [0.19, 0.64])
-      mesh(new T.SphereGeometry(0.025, 6, 4), gold, g, s * 0.44, y, 0.452);
+      mesh(new T.SphereGeometry(0.025, 12, 8), gold, g, s * 0.44, y, 0.452);
   }
   block(g, gold, 0, 0.61, 0.44, 0.2, 0.25, 0.08);
   block(g, mat(0x36251a), 0, 0.61, 0.488, 0.035, 0.08, 0.015);

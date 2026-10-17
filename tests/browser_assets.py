@@ -22,9 +22,9 @@ with sync_playwright() as p:
  print('HIGH-RESOLUTION SKIN PASS:',skins,flush=True)
  page.locator('#start-button').click();page.wait_for_function("ember.snapshot().mode === 'playing'")
  page.locator('#toast').wait_for(state='hidden')
- assert page.evaluate('ember.snapshot().drawCalls') < 280
- assert page.evaluate('ember.snapshot().triangles') < 240000
- page.screenshot(path='/workspace/sites/ember-skylands/docs/art-world.png')
+ assert page.evaluate('ember.snapshot().drawCalls') < 450
+ assert page.evaluate('ember.snapshot().triangles') < 400000
+ page.screenshot(path='/workspace/sites/ember-skylands/docs/polish-world.png')
  print('ART WORLD BUDGET:',json.dumps(page.evaluate('ember.snapshot()')),flush=True)
  # A test-only asset viewer isolates silhouettes and UV surfaces from gameplay.
  gallery='''<!doctype html><html><body style="margin:0;background:#e8e6db"><canvas id="preview"></canvas><script type="module">
@@ -50,7 +50,7 @@ with sync_playwright() as p:
  page.route('**/art-preview?*',lambda route:route.fulfill(status=200,content_type='text/html',body=gallery))
  for kind in ['dragon','armor','giant','tree']:
   page.goto('http://127.0.0.1:4173/art-preview?model='+kind,wait_until='networkidle');page.wait_for_function('window.galleryReady')
-  page.screenshot(path='/workspace/sites/ember-skylands/docs/model-'+kind+'.png')
+  page.screenshot(path='/workspace/sites/ember-skylands/docs/polish-model-'+kind+'.png')
   print('ASSET PREVIEW PASS:',kind,flush=True)
  assert not errors,errors
  browser.close()

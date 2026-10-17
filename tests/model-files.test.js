@@ -19,7 +19,7 @@ test('authored GLB files parse through the standard Three.js glTF loader', async
       }
     });
     assert.ok(triangles > 1000);
-    assert.ok(triangles < (name === 'dragon' ? 12000 : 6500));
+    assert.ok(triangles < (name === 'dragon' ? 26000 : 20000));
     const rig = root.userData.engineRig;
     for (const [key, names] of Object.entries(rig))
       root.userData[key] = Array.isArray(names)

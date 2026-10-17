@@ -1,5 +1,7 @@
 import * as T from '../assets/three.module.js';
 import { texture, mesh, block, orb } from './assets.js';
+import { surface } from './surfaces.js';
+import { applySceneryUvs } from './scenery-uv.js';
 import { createTree } from './trees.js';
 import { createGrass } from './grass.js';
 import { batchStatic } from '../engine/batching.js';
@@ -17,12 +19,10 @@ export function createLandScene(scene, level) {
   const grass = texture(
       level.id === 'peace-keepers' ? 'sand' : level.id === 'magic-crafters' ? 'snow' : 'grass',
     ),
-    stone = texture('stone'),
     waterTex = texture('water');
   grass.repeat.set(30, 30);
-  stone.repeat.set(4, 4);
-  const stoneMat = new T.MeshStandardMaterial({ color: t.stone, map: stone, roughness: 0.94 }),
-    roof = new T.MeshStandardMaterial({ color: t.accent, roughness: 0.8 }),
+  const stoneMat = surface('masonry', t.stone),
+    roof = surface('roof', t.accent),
     trim = new T.MeshStandardMaterial({ color: 0xf3dfaf, roughness: 0.8 }),
     dark = new T.MeshStandardMaterial({ color: 0x375365, roughness: 0.85 });
   const ground = new T.MeshStandardMaterial({ color: t.color, map: grass, roughness: 1 });
@@ -44,19 +44,15 @@ export function createLandScene(scene, level) {
       conformed.add(block(root, trim, side * 61, 6.4, i, 4.3, 1.1, 3));
     }
   }
-  const pathMat = new T.MeshStandardMaterial({
-    color: level.id === 'magic-crafters' ? 0xb9cbdb : 0xdcc398,
-    map: stone,
-    roughness: 1,
-  });
+  const pathMat = surface('masonry', level.id === 'magic-crafters' ? 0xdce4ed : 0xf2dfb8);
   for (const path of level.paths) conformed.add(mesh(pathGeometry(level, path), pathMat, root));
   function tower(x, z, h = 12, r = 3) {
     const g = new T.Group();
     g.position.set(x, 0, z);
     root.add(g);
-    mesh(new T.CylinderGeometry(r, r * 1.08, h, 16), stoneMat, g, 0, h / 2, 0);
-    mesh(new T.CylinderGeometry(r * 1.18, r * 1.18, 0.6, 16), trim, g, 0, h, 0);
-    mesh(new T.ConeGeometry(r * 1.4, 5, 16), roof, g, 0, h + 2.7, 0);
+    mesh(new T.CylinderGeometry(r, r * 1.08, h, 32), stoneMat, g, 0, h / 2, 0);
+    mesh(new T.CylinderGeometry(r * 1.18, r * 1.18, 0.6, 32), trim, g, 0, h, 0);
+    mesh(new T.ConeGeometry(r * 1.4, 5, 32), roof, g, 0, h + 2.7, 0);
     for (let i = 0; i < 4; i++) {
       const a = (i * Math.PI) / 2,
         m = block(
@@ -151,10 +147,10 @@ export function createLandScene(scene, level) {
         g.position.set(side * 48, 0, -28 + i * 27);
         g.rotation.y = (-side * Math.PI) / 2;
         root.add(g);
-        const barrel = mesh(new T.CylinderGeometry(0.55, 0.8, 3.7, 12), bronze, g, 0, 1.5, 0);
+        const barrel = mesh(new T.CylinderGeometry(0.55, 0.8, 3.7, 24), bronze, g, 0, 1.5, 0);
         barrel.rotation.x = Math.PI / 2 - 0.25;
         for (const x of [-0.9, 0.9]) {
-          const wheel = mesh(new T.CylinderGeometry(1, 1, 0.3, 12), roof, g, x, 0.8, 0.6);
+          const wheel = mesh(new T.CylinderGeometry(1, 1, 0.3, 24), roof, g, x, 0.8, 0.6);
           wheel.rotation.z = Math.PI / 2;
         }
         if (i === 0) landmark('cannons', g);
@@ -215,11 +211,16 @@ export function createLandScene(scene, level) {
           mesh(new T.ConeGeometry(2.4 - j * 0.5, 3.3, 10), trim, root, x, 3 + j * 1.4, z);
       }
   }
+  const rockMat = new T.MeshStandardMaterial({
+    color: t.stone,
+    map: texture('snow'),
+    roughness: 1,
+  });
   // Visible low boulders correspond exactly to the collision cylinders in level data.
   for (const obstacle of level.obstacles) {
     const rock = mesh(
-      new T.DodecahedronGeometry(obstacle.r, 1),
-      stoneMat,
+      new T.DodecahedronGeometry(obstacle.r, 2),
+      rockMat,
       root,
       obstacle.x,
       1.6,
@@ -227,6 +228,7 @@ export function createLandScene(scene, level) {
     );
     rock.scale.y = 0.64;
   }
+  applySceneryUvs(root, new Set([stoneMat, roof]), 6);
   // Lift scenery before creating already-elevated interactive items and grass.
   for (const child of root.children)
     if (!conformed.has(child))

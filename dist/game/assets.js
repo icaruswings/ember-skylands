@@ -4,6 +4,7 @@ import {
   createDragon as proceduralDragon,
   createSentinel as proceduralSentinel,
 } from './characters.js';
+import { paintedTexture } from './surfaces.js';
 import { cloneModel } from '../engine/models.js';
 export { animateDragon, animateSentinel } from './characters.js';
 export function createDragon(scale = 1, color) {
@@ -13,6 +14,12 @@ export function createSentinel(type) {
   return cloneModel('gnorc-' + type) || proceduralSentinel(type);
 }
 export function texture(kind) {
+  const painted = paintedTexture(kind === 'stone' ? 'masonry' : kind);
+  if (painted) {
+    const tex = painted.clone();
+    tex.userData.shared = false;
+    return tex;
+  }
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1024;
   const c = canvas.getContext('2d');

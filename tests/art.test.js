@@ -20,11 +20,11 @@ function inspect(model, budget) {
 }
 
 test('dragon geometry fits the mobile triangle budget and has valid texture coordinates', () => {
-  inspect(createDragon(), 12000);
+  inspect(createDragon(), 26000);
 });
 
 test('every sentinel variant fits its geometry budget', () => {
-  for (const type of ['armor', 'giant', 'normal']) inspect(createSentinel(type), 6500);
+  for (const type of ['armor', 'giant', 'normal']) inspect(createSentinel(type), 20000);
 });
 
 test('branching trees have finite shaded surfaces and bounded geometry', () => {

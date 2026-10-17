@@ -37,3 +37,11 @@ Rebuild the GLBs whenever character geometry or material metadata changes, then 
 Run `npm test` and `npm run check`. With the local server running, `python tests/browser_assets.py` checks loaded texture/normal resolution and scene budgets, then renders isolated dragon, sentinel and tree previews into `docs/model-*.png`. The viewer is test-only and does not add a shipping game mode.
 
 Review both close-ups and the real game camera: inspect eye occlusion, mouth/fire alignment, curved-surface seams, UV stretching, leaf silhouettes, shadow edges and animation joints. Then run phone and flame integration checks. Geometry, UV/normal validity, budgets, seam continuity, pupil visibility and rig transforms have automated coverage. Physical-device performance still needs hardware validation.
+
+## High-definition polish — 2026-10-17
+
+The new `prop-surfaces.webp` is an image-generated 1254 × 1254 atlas with limestone, wood, slate and steel. Four isolated 627px swatches have their own mip chains and 512px linear-data relief normals. `scenery-uv.js` keeps masonry/roof detail at a stable world scale while retaining curved unwraps. Shared maps are explicitly owned by the asset cache.
+
+Character geometry now uses denser round details and curved profiles, with budgets of 26,000 dragon triangles and 20,000 per Gnorc. Indexed batches preserve normal and UV discontinuities and reduce exported model sizes below 700 KB each despite the extra polygons. Regenerate with `npm run assets`.
+
+The distance-driven gait, banked turns, eased charge/glide poses, tucked ground wings and landing compression use transient simulation state. The save schema remains unchanged. See [the polish record](character-motion-polish.md) for exact geometry counts and verification.

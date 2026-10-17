@@ -1,7 +1,8 @@
 """Actual phone UI integration: travel, bounded charge, flight and scene resource reuse."""
 from playwright.sync_api import sync_playwright
 from pathlib import Path
-import json,math
+import json,math,os
+SHOT_PREFIX=os.environ.get('EMBER_CAPTURE_PREFIX','world-')
 BASE='http://127.0.0.1:4173'
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader'])
@@ -19,7 +20,7 @@ with sync_playwright() as p:
   assert len(s['landmarks'])>=2;assert s['triangles']<400000;assert s['drawCalls']<450
   memories.append(s['memory']['geometries'])
   page.locator('#toast').wait_for(state='hidden',timeout=15000)
-  page.screenshot(path='docs/world-'+land+'.png')
+  page.screenshot(path='docs/'+SHOT_PREFIX+land+'.png')
   print('WORLD PASS',land,json.dumps({'calls':s['drawCalls'],'triangles':s['triangles'],'memory':s['memory']}),flush=True)
  assert max(memories[3:])<max(memories[:3])+50,memories
  cdp=context.new_cdp_session(page)
@@ -45,7 +46,7 @@ with sync_playwright() as p:
  page.locator('#resume-button').tap()
  page.locator('#retry-flight-button').tap()
  page.locator('#toast').wait_for(state='hidden',timeout=15000)
- page.screenshot(path='docs/world-sunny-flight.png')
+ page.screenshot(path='docs/'+SHOT_PREFIX+'sunny-flight.png')
  page.locator('#retry-flight-button').tap();page.wait_for_function('ember.snapshot().flight.targets===0 && ember.snapshot().adventureTime<1')
  page.locator('#worlds-button').tap();page.locator('#flight-timed').tap();page.wait_for_function('ember.snapshot().flight.remaining>0')
  page.locator('#worlds-button').tap();page.locator('[data-land="artisans"]').tap();page.wait_for_function("ember.snapshot().world==='artisans'")
@@ -54,7 +55,7 @@ with sync_playwright() as p:
  page.locator('#start-button').tap();page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(500)
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
  assert page.locator('#worlds-button').is_visible();page.locator('#worlds-button').tap()
- assert page.locator('[data-land="magic-crafters"]').is_visible();page.screenshot(path='docs/world-picker-phone.png')
+ assert page.locator('[data-land="magic-crafters"]').is_visible();page.screenshot(path='docs/'+SHOT_PREFIX+'picker-phone.png')
  assert not errors,errors
  print('PHONE CAMPAIGN PASS: all destinations, resource reuse, multitouch release, flight climb/fire/loop/turn, pause, retry, timer, persistence and portrait picker',flush=True)
  context.close();browser.close()

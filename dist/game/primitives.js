@@ -24,8 +24,8 @@ export function mesh(geometry, material, parent, x = 0, y = 0, z = 0) {
   parent.add(m);
   return m;
 }
-const sphere = new T.SphereGeometry(1, 12, 8),
-  cone = new T.ConeGeometry(1, 1, 10),
+const sphere = new T.SphereGeometry(1, 24, 16),
+  cone = new T.ConeGeometry(1, 1, 20),
   box = new T.BoxGeometry(1, 1, 1);
 for (const geometry of [sphere, cone, box]) geometry.userData.shared = true;
 export function orb(parent, material, x, y, z, sx, sy = sx, sz = sx) {

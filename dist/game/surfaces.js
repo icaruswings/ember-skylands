@@ -7,10 +7,11 @@ const textures = new Map(),
 const regions = { membrane: [0.5, 0.5], foliage: [0.5, 0] };
 export async function loadArtTextures() {
   const loader = new T.TextureLoader();
-  const [atlas, scales, bark] = await Promise.all([
+  const [atlas, scales, bark, props] = await Promise.all([
     loader.loadAsync(new URL('../assets/material-atlas.webp', import.meta.url).href),
     loader.loadAsync(new URL('../assets/dragon-scales.webp', import.meta.url).href),
     loader.loadAsync(new URL('../assets/oak-bark.webp', import.meta.url).href),
+    loader.loadAsync(new URL('../assets/prop-surfaces.webp', import.meta.url).href),
   ]);
   for (const [kind, position] of Object.entries(regions)) {
     // Extract swatches so mipmaps never bleed another material across an edge.
@@ -32,25 +33,53 @@ export async function loadArtTextures() {
     const tex = new T.CanvasTexture(canvas);
     textures.set(kind, tex);
   }
+  // Independent swatches retain their own mip chains; filtering cannot bleed neighbors.
+  for (const [kind, x, y] of [
+    ['masonry', 0, 0],
+    ['wood', 1, 0],
+    ['roof', 0, 1],
+    ['armor', 1, 1],
+  ]) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = props.image.width / 2;
+    canvas
+      .getContext('2d')
+      .drawImage(
+        props.image,
+        x * canvas.width,
+        y * canvas.height,
+        canvas.width,
+        canvas.height,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+    const map = new T.CanvasTexture(canvas);
+    map.wrapS = map.wrapT = T.RepeatWrapping;
+    textures.set(kind, map);
+  }
+  props.dispose();
   // Keep hand-painted scales as fine surface detail rather than oversized plates.
   const soft = document.createElement('canvas');
   soft.width = scales.image.width;
   soft.height = scales.image.height;
   const softContext = soft.getContext('2d');
   softContext.drawImage(scales.image, 0, 0);
-  softContext.fillStyle = 'rgba(241,235,220,.52)';
+  softContext.fillStyle = 'rgba(241,235,220,.34)';
   softContext.fillRect(0, 0, soft.width, soft.height);
   textures.set('scales', new T.CanvasTexture(soft));
   scales.dispose();
   textures.set('bark', bark);
-  textures.set('armor', armorTexture());
   textures.set('cloth', clothTexture());
   textures.set('skin', skinTexture());
   textures.set('horn', hornTexture());
   for (const tex of textures.values()) {
     tex.colorSpace = T.SRGBColorSpace;
     tex.anisotropy = 4;
-    tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
+    if (!['masonry', 'wood', 'roof', 'armor'].some((k) => textures.get(k) === tex))
+      tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
+    tex.userData.shared = true;
   }
   const detail = textures.get('scales');
   detail.wrapS = detail.wrapT = T.RepeatWrapping;
@@ -60,6 +89,7 @@ export async function loadArtTextures() {
     normal.wrapS = tex.wrapS;
     normal.wrapT = tex.wrapT;
     normal.repeat.copy(tex.repeat);
+    normal.userData.shared = true;
     normals.set(kind, normal);
   }
   atlas.dispose();
@@ -137,31 +167,6 @@ function hornTexture() {
   return new T.CanvasTexture(canvas);
 }
 
-function armorTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 1024;
-  const c = canvas.getContext('2d');
-  c.fillStyle = '#edeeeb';
-  c.fillRect(0, 0, 1024, 1024);
-  let seed = 91;
-  const random = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  for (let i = 0; i < 6000; i++) {
-    const v = 180 + Math.floor(random() * 55);
-    c.strokeStyle = `rgba(${v},${v},${v},.13)`;
-    c.lineWidth = 0.6;
-    const x = random() * 1024,
-      y = random() * 1024;
-    c.beginPath();
-    c.moveTo(x, y);
-    c.lineTo(x + random() * 40, y + (random() - 0.5) * 2);
-    c.stroke();
-  }
-  return new T.CanvasTexture(canvas);
-}
-
 // Small normal maps derive restrained relief from the painted surface grain.
 // They use linear color data and are capped at 512px to bound phone memory.
 function reliefNormals(image) {
@@ -206,11 +211,11 @@ export function surface(kind, color = 0xffffff) {
         map: map ?? null,
         normalMap: normals.get(kind) ?? null,
         normalScale: new T.Vector2(
-          kind === 'skin' || kind === 'scales' ? 0.18 : 0.6,
-          kind === 'skin' || kind === 'scales' ? 0.18 : 0.6,
+          kind === 'skin' ? 0.08 : kind === 'scales' ? 0.14 : 0.32,
+          kind === 'skin' ? 0.08 : kind === 'scales' ? 0.14 : 0.32,
         ),
-        roughness: kind === 'scales' ? 0.67 : kind === 'armor' ? 0.6 : 0.9,
-        metalness: kind === 'armor' ? 0.3 : 0,
+        roughness: kind === 'scales' ? 0.6 : kind === 'armor' ? 0.43 : 0.88,
+        metalness: kind === 'armor' ? 0.38 : 0,
         emissive: kind === 'foliage' ? 0x5f7937 : 0x000000,
         emissiveIntensity: kind === 'foliage' ? 0.24 : 0,
         side: kind === 'membrane' || kind === 'foliage' ? T.DoubleSide : T.FrontSide,
@@ -221,4 +226,9 @@ export function surface(kind, color = 0xffffff) {
   material.userData.surfaceKind = kind;
   material.userData.tint = color;
   return material;
+}
+
+/** Loaded, shared color map for scenery that owns its own material. */
+export function paintedTexture(kind) {
+  return textures.get(kind) ?? null;
 }

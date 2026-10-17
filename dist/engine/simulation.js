@@ -88,7 +88,14 @@ export class Simulation {
       health: 3,
       invincible: 0,
       flame: 0,
+      stride: 0,
+      turnRate: 0,
+      chargeBlend: 0,
+      glideBlend: 0,
+      landing: 0,
     };
+    this.jumpGrace = 0;
+    this.jumpBuffer = 0;
     this.jumpHeld = false;
     this.flameHeld = false;
     this.interactHeld = false;
@@ -120,16 +127,23 @@ export class Simulation {
     const p = this.player;
     p.invincible = Math.max(0, p.invincible - dt);
     p.flame = Math.max(0, p.flame - dt);
-    if (input.jumpPressed || (input.jump && !this.jumpHeld)) {
-      if (p.grounded) {
-        p.vy = 10;
-        p.grounded = false;
-        this.emit('jump');
-      } else {
-        p.gliding = !p.gliding;
-        this.emit('glide');
+    this.jumpGrace = p.grounded ? 0.08 : Math.max(0, this.jumpGrace - dt);
+    this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
+    p.landing *= Math.exp(-dt * 12);
+    const jumpPressed = input.jumpPressed || (input.jump && !this.jumpHeld);
+    if (jumpPressed) {
+      if (p.grounded || this.jumpGrace > 0) this.startJump(input.jump !== false);
+      else {
+        const floor = terrainHeight(this.level, p.x, p.z, p.y + 0.01);
+        // A late falling tap is an intended landing jump; other taps still toggle glide.
+        if (!p.gliding && p.vy < 0 && floor !== null && p.y - floor < 0.5) this.jumpBuffer = 0.1;
+        else {
+          p.gliding = !p.gliding;
+          this.emit('glide');
+        }
       }
     }
+    if (this.jumpHeld && !input.jump && p.vy > 6.6 && !p.gliding) p.vy = 6.6;
     this.jumpHeld = !!input.jump;
     if (input.flamePressed || (input.flame && !this.flameHeld)) {
       p.flame = 0.42;
@@ -193,12 +207,20 @@ export class Simulation {
       if (p.gliding) p.vy = Math.max(-2.2, p.vy);
       p.y += p.vy * dt;
       if (floor !== null && p.y <= floor && p.vy <= 0) {
+        p.landing = Math.min(1, Math.abs(p.vy) / 12);
         p.y = floor;
         p.vy = 0;
         p.grounded = true;
         p.gliding = false;
+        if (this.jumpBuffer > 0) {
+          this.startJump();
+          if (!input.jump) p.vy = 6.6;
+        }
       } else p.grounded = false;
     }
+    p.stride += Math.hypot(nx - p.x, nz - p.z) * 1.55;
+    p.chargeBlend += (+p.charging - p.chargeBlend) * (1 - Math.exp(-dt * 15));
+    p.glideBlend += (+p.gliding - p.glideBlend) * (1 - Math.exp(-dt * 16));
     p.x = nx;
     p.z = nz;
     if (p.y < -12) {
@@ -246,6 +268,15 @@ export class Simulation {
     if (input.interactPressed || (input.interact && !this.interactHeld)) this.interact();
     this.interactHeld = !!input.interact;
   }
+  startJump(held = true) {
+    const p = this.player;
+    p.vy = held ? 10 : 6.6;
+    p.grounded = false;
+    p.gliding = false;
+    this.jumpGrace = 0;
+    this.jumpBuffer = 0;
+    this.emit('jump');
+  }
   inAttackRange(target, range, height, directional = true) {
     const p = this.player,
       dx = target.x - p.x,
@@ -289,7 +320,19 @@ export class Simulation {
     this.emit('damage');
     if (p.health <= 0 || fall) {
       if (p.health <= 0) p.health = 3;
-      Object.assign(p, this.checkpoint, { vy: 0, vx: 0, vz: 0, grounded: true, gliding: false });
+      Object.assign(p, this.checkpoint, {
+        vy: 0,
+        vx: 0,
+        vz: 0,
+        grounded: true,
+        gliding: false,
+        turnRate: 0,
+        chargeBlend: 0,
+        glideBlend: 0,
+        landing: 0,
+      });
+      this.jumpGrace = 0;
+      this.jumpBuffer = 0;
       this.emit('respawn');
     }
   }

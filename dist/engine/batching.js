@@ -1,6 +1,7 @@
 import * as T from '../assets/three.module.js';
+import { mergeVertices } from '../assets/BufferGeometryUtils.js';
 /** Batch opaque static meshes by material, preserving normals and UV mapping. */
-export function batchStatic(root, excluded = new Set(), recursive = true) {
+export function batchStatic(root, excluded = new Set(), recursive = true, indexed = false) {
   root.updateMatrixWorld(true);
   const inverse = root.matrixWorld.clone().invert(),
     buckets = new Map(),
@@ -41,8 +42,10 @@ export function batchStatic(root, excluded = new Set(), recursive = true) {
       }
       merged.setAttribute(name, new T.BufferAttribute(array, size));
     }
-    merged.computeBoundingSphere();
-    const m = new T.Mesh(merged, material);
+    const finalGeometry = indexed ? mergeVertices(merged) : merged;
+    if (indexed) merged.dispose();
+    finalGeometry.computeBoundingSphere();
+    const m = new T.Mesh(finalGeometry, material);
     m.castShadow = m.receiveShadow = true;
     root.add(m);
     for (const g of geos) g.dispose();
@@ -50,5 +53,5 @@ export function batchStatic(root, excluded = new Set(), recursive = true) {
 }
 export function batchParts(root) {
   for (const child of [...root.children]) if (child.isGroup) batchParts(child);
-  batchStatic(root, new Set(), false);
+  batchStatic(root, new Set(), false, true);
 }

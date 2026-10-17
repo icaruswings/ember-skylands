@@ -17,7 +17,7 @@ function wing(sign) {
   shape.quadraticCurveTo(sign * 1.7, 0.1, sign * 1.64, -0.44);
   shape.quadraticCurveTo(sign * 1.1, -0.25, sign * 0.84, -0.76);
   shape.quadraticCurveTo(sign * 0.45, -0.36, 0, -0.46);
-  const g = new T.ShapeGeometry(shape, 12),
+  const g = new T.ShapeGeometry(shape, 18),
     uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++)
     uv.setXY(
@@ -33,22 +33,26 @@ export function createDragon(scale = 1, color = palette.dragon) {
     torso = new T.Group();
   root.add(torso);
   const skin = surface('scales', color),
-    belly = mat(0xffd45a),
-    horn = surface('horn', 0xffc34d),
+    belly = surface('horn', 0xffdf7c),
+    horn = surface('horn', 0xffd278),
     dark = mat(0x143d3c),
     white = mat(0xfff8dc),
     ridge = mat(0xf29527),
     iris = mat(0xe8a52f, { roughness: 0.3 });
   mesh(
     geometry('torso', () =>
-      loft([
-        [-1.06, 0.015, 0.015, 0.88],
-        [-0.8, 0.46, 0.47, 0.9],
-        [-0.25, 0.55, 0.48, 0.93],
-        [0.37, 0.4, 0.38, 1.0],
-        [0.8, 0.24, 0.28, 1.08],
-        [1, 0.015, 0.015, 1.1],
-      ]),
+      loft(
+        [
+          [-1.06, 0.015, 0.015, 0.88],
+          [-0.8, 0.39, 0.4, 0.9],
+          [-0.25, 0.46, 0.41, 0.93],
+          [0.37, 0.37, 0.35, 1.0],
+          [0.8, 0.24, 0.28, 1.08],
+          [1, 0.015, 0.015, 1.1],
+        ],
+        28,
+        36,
+      ),
     ),
     skin,
     torso,
@@ -107,8 +111,8 @@ export function createDragon(scale = 1, color = palette.dragon) {
           [1.18, 0.28, 0.15, 0.015],
           [1.24, 0.01, 0.01, -0.035],
         ],
-        20,
-        30,
+        28,
+        36,
       ).scale(1, 1, 0.72),
     ),
     skin,
@@ -126,8 +130,8 @@ export function createDragon(scale = 1, color = palette.dragon) {
           [1.05, 0.255, 0.065, -0.19],
           [1.19, 0.04, 0.02, -0.18],
         ],
-        16,
-        14,
+        20,
+        18,
       )
         .scale(1.06, 1, 0.72)
         .translate(0, 0.13, -0.25),
@@ -172,12 +176,12 @@ export function createDragon(scale = 1, color = palette.dragon) {
         taper(
           [
             [s * 0.31, 0.45, -0.22],
-            [s * 0.46, 0.97, -0.4],
-            [s * 0.5, 1.43, -0.62],
+            [s * 0.46, 0.87, -0.46],
+            [s * 0.5, 1.18, -0.82],
           ],
           [0.15, 0.105, 0.006],
-          10,
-          16,
+          20,
+          24,
         ),
       ),
       horn,
@@ -223,7 +227,7 @@ export function createDragon(scale = 1, color = palette.dragon) {
         [s * 0.085, -0.34, hind ? 0.12 : -0.08],
         hind ? 0.21 : 0.15,
         0.115,
-        12,
+        20,
       );
       orb(leg, skin, s * 0.085, -0.34, hind ? 0.12 : -0.08, 0.12, 0.12, 0.12);
       link(
@@ -233,7 +237,7 @@ export function createDragon(scale = 1, color = palette.dragon) {
         [s * 0.07, -0.54, 0.16],
         0.115,
         0.075,
-        10,
+        20,
       );
       mesh(
         geometry('foot', () =>
@@ -244,8 +248,8 @@ export function createDragon(scale = 1, color = palette.dragon) {
               [0.24, 0.17, 0.08, 0],
               [0.33, 0.025, 0.025, 0],
             ],
-            12,
-            10,
+            20,
+            16,
           ),
         ),
         skin,
@@ -290,8 +294,8 @@ export function createDragon(scale = 1, color = palette.dragon) {
           [0.05, 0.36, -2.38],
         ],
         [0.28, 0.21, 0.13, 0.07, 0.005],
-        14,
-        32,
+        20,
+        40,
       ),
     ),
     skin,
@@ -358,23 +362,32 @@ export function animateDragon(root, time, speed, gliding, charging, state = {}) 
     effort = T.MathUtils.clamp(speed / 7, 0, 1),
     rise = Math.tanh((state.vy ?? 0) / 6),
     breathing = T.MathUtils.clamp((state.flame ?? 0) / 0.12, 0, 1),
-    phase = time * (charging ? 18 : 11),
+    phase = state.stride ?? time * (charging ? 18 : 11),
+    charge = state.chargeBlend ?? +charging,
+    glide = state.glideBlend ?? +gliding,
+    turn = T.MathUtils.clamp(state.turnRate ?? 0, -5, 5),
     idleLook = running || air || gliding || charging || breathing ? 0 : Math.sin(time * 0.7) * 0.13;
-  a.torso.position.y = running ? Math.sin(phase * 2) * 0.035 * effort : Math.sin(time * 2) * 0.018;
+  a.torso.position.y =
+    (running ? Math.sin(phase * 2) * 0.028 * effort : Math.sin(time * 2) * 0.018) -
+    (state.landing ?? 0) * 0.06;
   a.torso.rotation.set(
-    air ? -rise * 0.12 : charging ? 0.08 : gliding ? -0.06 : 0,
+    air ? -rise * 0.12 : charge * 0.08 - glide * 0.06,
     0,
-    running ? Math.sin(phase) * 0.025 * effort : 0,
+    running ? Math.sin(phase) * 0.02 * effort - turn * 0.035 * effort : 0,
   );
-  a.head.position.y = 1.28 - (charging ? 0.13 : 0);
+  a.head.position.y = 1.28 - charge * 0.13;
   a.head.rotation.set(
-    breathing ? -0.025 : charging ? 0.26 : air ? -rise * 0.14 : Math.sin(time * 2) * 0.02,
-    idleLook,
+    breathing
+      ? -0.025
+      : air
+        ? -rise * 0.14
+        : charge * 0.26 + Math.sin(time * 2) * 0.02 * (1 - charge),
+    idleLook + turn * 0.016,
     idleLook * -0.24,
   );
   a.tail.rotation.set(
     gliding ? -0.07 : air ? rise * 0.1 : 0,
-    Math.sin(time * (running ? 6 : 2.2)) * (running ? 0.13 : 0.18),
+    Math.sin(running ? phase * 0.55 : time * 2.2) * (running ? 0.12 : 0.18) + turn * 0.025,
     0,
   );
   // Front and hind pairs have a short offset, giving a gallop rather than a walk.
@@ -395,12 +408,12 @@ export function animateDragon(root, time, speed, gliding, charging, state = {}) 
   }
   for (let i = 0; i < 2; i++) {
     const sign = i === 0 ? -1 : 1;
-    const spread = gliding ? 0.04 : air ? 0.22 : 0.77;
+    const spread = T.MathUtils.lerp(grounded ? 1.27 : 0.28, 0.04, glide);
     const flap = air ? Math.sin(time * 13) * (rise > 0 ? 0.24 : 0.08) : Math.sin(time * 3) * 0.04;
     a.wings[i].rotation.set(
       air ? -rise * 0.12 : 0,
       sign * spread,
-      sign * (gliding ? 0.12 + Math.sin(time * 5) * 0.045 : air ? 0.12 + flap : 0.24 + flap),
+      sign * (gliding ? 0.12 + Math.sin(time * 5) * 0.045 : air ? 0.12 + flap : 0.08 + flap),
     );
   }
   if (a.jaw) a.jaw.rotation.x = breathing * 0.36;
@@ -424,7 +437,7 @@ export function createSentinel(type) {
     dark = mat(0x302c2a),
     ivory = mat(0xf5d6a0),
     white = mat(0xfff7d5),
-    iron = surface('armor', 0x6f7478);
+    iron = surface('armor', 0xb7c4d0);
   const torso = new T.Group();
   root.add(torso);
   const arms = [];
@@ -434,14 +447,14 @@ export function createSentinel(type) {
       [
         [0.59, 0.035, 0.025, 0],
         [0.68, 0.54, 0.39, -0.06],
-        [0.95, 0.64, 0.49, -0.1],
-        [1.24, 0.59, 0.43, -0.07],
-        [1.55, 0.48, 0.31, 0],
+        [0.95, 0.55, 0.39, -0.065],
+        [1.24, 0.56, 0.36, -0.05],
+        [1.55, 0.55, 0.31, 0],
         [1.72, 0.29, 0.21, 0],
         [1.75, 0.02, 0.02, 0],
       ],
-      16,
-      18,
+      24,
+      26,
     );
     g.rotateX(-Math.PI / 2);
     return g;
@@ -473,8 +486,8 @@ export function createSentinel(type) {
           [0.43, 0.17, 0.11, -0.08],
           [0.45, 0.012, 0.012, -0.08],
         ],
-        16,
-        18,
+        24,
+        26,
       ),
     ),
     skin,
@@ -520,7 +533,7 @@ export function createSentinel(type) {
           [
             [sign * 0.34, 0.19, -0.045],
             [sign * 0.58, 0.2, -0.11],
-            [sign * 0.72, 0.08, -0.23],
+            [sign * 0.86, 0.04, -0.26],
           ],
           [0.12, 0.15, 0.003],
           8,
@@ -536,7 +549,7 @@ export function createSentinel(type) {
     const leg = new T.Group();
     leg.position.set(sign * 0.32, 0.68, 0);
     torso.add(leg);
-    link(leg, skin, [0, 0, 0], [sign * 0.05, -0.44, 0.025], 0.15, 0.1, 10);
+    link(leg, skin, [0, 0, 0], [sign * 0.05, -0.44, 0.025], 0.15, 0.1, 20);
     const boot = mesh(
       geometry('gnorc-boot', () =>
         loft(
@@ -574,8 +587,8 @@ export function createSentinel(type) {
           [-0.73, 0.88, 0.34],
         ],
         [0.16, 0.145, 0.105],
-        10,
-        12,
+        18,
+        20,
       ).translate(0.54, -1.46, 0),
     ),
     skin,
@@ -595,8 +608,8 @@ export function createSentinel(type) {
           [0.61, 1.8, 0.22],
         ],
         [0.16, 0.14, 0.105],
-        10,
-        12,
+        18,
+        20,
       ).translate(-0.54, -1.46, 0),
     ),
     skin,
@@ -632,10 +645,26 @@ export function createSentinel(type) {
   );
   sack.rotation.z = -0.24;
   if (armored) {
+    const breastplate = loft(
+      [
+        [0.91, 0.05, 0.02, -0.3],
+        [1.02, 0.4, 0.11, -0.36],
+        [1.27, 0.53, 0.13, -0.36],
+        [1.5, 0.48, 0.12, -0.28],
+        [1.62, 0.15, 0.03, -0.2],
+      ],
+      24,
+      22,
+    );
+    breastplate.rotateX(-Math.PI / 2);
+    mesh(breastplate, iron, torso);
+    const rim = mesh(new T.TorusGeometry(0.46, 0.025, 8, 32, Math.PI), iron, torso, 0, 1.42, 0.3);
+    rim.scale.y = 0.32;
+
     // A curved metal helmet distinguishes the charge-only enemy without hiding his face.
     mesh(
       geometry('gnorc-helmet', () => {
-        const g = new T.SphereGeometry(0.435, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+        const g = new T.SphereGeometry(0.435, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
         g.scale(1, 0.7, 0.9);
         return g;
       }),
@@ -647,7 +676,10 @@ export function createSentinel(type) {
     );
     for (const sign of [-1, 1]) orb(torso, iron, sign * 0.54, 1.52, -0.025, 0.25, 0.13, 0.25);
   }
-  if (giant) root.scale.setScalar(1.35);
+  if (giant) {
+    root.scale.setScalar(1.35);
+    torso.scale.set(1.12, 1.03, 1.06);
+  }
   // Preserve each animated leg and sack while batching their material surfaces.
   batchParts(root);
   root.userData = { torso, legs, head, sack, arms, kind: 'gnorc', variant: type };
