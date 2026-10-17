@@ -1,3 +1,5 @@
+import { FlightSimulation } from './flight.js';
+import { FLIGHT_COURSE } from '../game/flight-course.js';
 import { Simulation } from './simulation.js';
 import { LANDS, getLand } from '../game/lands.js';
 
@@ -24,16 +26,28 @@ export class Campaign {
     this.simulation = new Simulation(getLand(this.landId), this.worlds[this.landId]);
   }
   recordCurrent() {
-    if (this.simulation.level.kind !== 'flight') this.worlds[this.landId] = this.simulation.save();
+    if (this.simulation.level.kind === 'flight') this.recordFlight();
+    else this.worlds[this.landId] = this.simulation.save();
   }
-  travel(id) {
-    const level = getLand(id);
+  travel(id, options = {}) {
+    const level = id === FLIGHT_COURSE.id ? FLIGHT_COURSE : getLand(id);
     if (!level) throw new Error('Unknown land');
     this.recordCurrent();
     this.landId = id;
-    this.lastGroundLand = id;
-    this.simulation = new Simulation(level, this.worlds[id]);
+    if (level.kind === 'flight') this.simulation = new FlightSimulation(level, options);
+    else {
+      this.lastGroundLand = id;
+      this.simulation = new Simulation(level, this.worlds[id]);
+    }
     return this.simulation;
+  }
+  recordFlight() {
+    const s = this.simulation;
+    if (s.level.kind !== 'flight' || s.result !== 'complete' || s.recorded) return;
+    s.recorded = true;
+    this.flightRecord.completed++;
+    if (s.timed && (!this.flightRecord.bestTime || s.time < this.flightRecord.bestTime))
+      this.flightRecord.bestTime = s.time;
   }
   resetEnemies() {
     if (this.simulation.level.kind === 'flight') return;

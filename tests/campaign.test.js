@@ -58,3 +58,28 @@ test('replaying enemies preserves treasure and rescues', async () => {
   assert.equal(c.simulation.collected.size, 1);
   assert.equal(c.simulation.rescued.size, 1);
 });
+
+test('flight returns to the last land and only completed timed runs set a best time', async () => {
+  const c = await create();
+  c.travel('magic-crafters');
+  c.travel('sunny-flight', { timed: true });
+  assert.equal(c.simulation.level.kind, 'flight');
+  assert.equal(c.save().currentLand, 'magic-crafters');
+  c.simulation.result = 'timeout';
+  c.simulation.time = 8;
+  assert.equal(c.save().flight.bestTime, null);
+  c.travel('sunny-flight', { timed: true });
+  c.simulation.result = 'complete';
+  c.simulation.time = 42;
+  assert.equal(c.save().flight.bestTime, 42);
+  assert.equal(c.save().flight.completed, 1);
+  assert.equal(c.save().flight.completed, 1);
+  c.travel('sunny-flight', { timed: false });
+  c.simulation.result = 'complete';
+  c.simulation.time = 12;
+  assert.equal(c.save().flight.bestTime, 42);
+  assert.equal(c.save().flight.completed, 2);
+  const restored = await create(c.save());
+  assert.equal(restored.landId, 'magic-crafters');
+  assert.equal(restored.flightRecord.bestTime, 42);
+});

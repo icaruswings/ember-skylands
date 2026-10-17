@@ -9,3 +9,6 @@ Task 1: in progress.
 
 Task 1: complete — new ground/campaign tests GREEN; all 18 Node test files pass. Boundary charge and airborne containment verified each step, not only final respawn position.
 Task 2: in progress.
+
+Task 2: complete — 11 full-flight tests and campaign flight-record test GREEN; all 19 Node files and syntax checks pass. Primary manual and secondary flight-control research recorded.
+Task 3: in progress.
